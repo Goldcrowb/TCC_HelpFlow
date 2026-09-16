@@ -13,3 +13,16 @@ Critério de Divisão (Regra do "E"): O tamanho máximo de uma rotina deve ser c
 Política de Comentários: Deve-se comentar o "porquê" (a justificativa de uma regra de negócio complexa) e saber o que não comentar (códigos óbvios que já se explicam pela própria nomenclatura).  
 Tratamento de Falhas: As falhas serão sinalizadas por meio de exceções de domínio (ex: DadoInvalidoException ao tentar inserir uma data incorreta), garantindo que a classe já nasça válida. O tratamento e a conversão dessas exceções em mensagens amigáveis ocorrerão nas camadas superiores.  
 
+## 🛠️ Stack Tecnológica
+* **Linguagem:** TypeScript
+* **Front-end:** React (com Vite)
+* **Back-end:** Node.js (com Express/NestJS)
+* **Banco de Dados:** PostgreSQL (Hospedado via Supabase)
+* **Hospedagem (em Nuvem Gratuita):** Vercel (Front) e Render (Back)
+
+## 📦 Pré-requisitos para Instalação Local
+Para executar o projeto localmente para avaliação, certifique-se de que sua máquina possui:
+1. **Node.js**: Versão 18.x ou superior.
+2. **NPM (ou Yarn)**: Instalado junto ao Node.js.
+3. **Git**: Para clonar este repositório.
+
