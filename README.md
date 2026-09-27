@@ -32,4 +32,4 @@ Tratamento de Falhas: As falhas serão sinalizadas por meio de exceções de dom
 * **Framework de Testes:** Vitest (ou Jest) para execução dos testes unitários e de integração (validação da fila e regras de negócio).
 
 # 3. Como Execultar o Projeto
-* **npm install, npm run dev
+npm install, npm run dev
