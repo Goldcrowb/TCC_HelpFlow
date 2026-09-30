@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": true
+  },
+  "include": [
+    "src/dominio/CategoriaChamado.ts",
+    "src/dominio/Chamado.ts",
+    "src/dominio/DadoInvalidoException.ts",
+    "src/dominio/Mensagem.ts",
+    "src/dominio/PerfilUsuario.ts",
+    "src/dominio/RepositorioChamado.ts",
+    "src/dominio/RepositorioUsuario.ts",
+    "src/dominio/StatusChamado.ts",
+    "src/dominio/Usuario.ts",
+    "src/aplicacao/AutenticacaoService.ts",
+    "src/aplicacao/ChamadoService.ts",
+    "src/persistencia/RepositorioChamadoMemoria.ts",
+    "src/persistencia/RepositorioUsuarioMemoria.ts"
+  ]
+}
