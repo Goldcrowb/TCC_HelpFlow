@@ -1,37 +1,124 @@
-# TCC_HelpFlow
-Trabalho do TCC
+# HelpFlow — TCC
 
-# 1. Diretrizes do Repositório
-Estrutura de Pastas: Os diretórios do projeto devem refletir diretamente as camadas arquiteturais que serão construídas (ex: dominio, infraestrutura, aplicacao).  
-Documentação Inicial: A raiz do repositório contará com um arquivo de leiame (README.md) contendo as instruções exatas de compilação e execução.  
-Preservação de Histórico: O progresso deve ser registrado com contribuições frequentes; é expressamente proibido realizar um único envio massivo de código no final do projeto.  
+Sistema centralizado de atendimento de suporte técnico desenvolvido para a disciplina de Engenharia de Software.
 
-# 2. Padrões de Codificação e Arquitetura
-Convenção de Nomes: Classes começarão com letra maiúscula (PascalCase), métodos e variáveis com minúscula (camelCase), e constantes serão escritas em letras maiúsculas separadas por sublinhado (SNAKE_CASE).  
-Organização Visual: A indentação será mantida em 4 espaços, com um limite sugerido de 120 caracteres para o comprimento de linha.  
-Critério de Divisão (Regra do "E"): O tamanho máximo de uma rotina deve ser curto. Se o nome ou a explicação de um método exigir o uso da conjunção "e" (por exemplo: validarEAtribuirChamado), é sinal de que ele fere o princípio de responsabilidade única e deve ser dividido em dois métodos distintos.  
-Política de Comentários: Deve-se comentar o "porquê" (a justificativa de uma regra de negócio complexa) e saber o que não comentar (códigos óbvios que já se explicam pela própria nomenclatura).  
-Tratamento de Falhas: As falhas serão sinalizadas por meio de exceções de domínio (ex: DadoInvalidoException ao tentar inserir uma data incorreta), garantindo que a classe já nasça válida. O tratamento e a conversão dessas exceções em mensagens amigáveis ocorrerão nas camadas superiores.  
+## Arquitetura
 
-## 🛠️ Stack Tecnológica e Ferramentas
+O projeto foi organizado em quatro camadas, conforme o Documento de Arquitetura:
 
-**Base e Lógica:**
-* **Linguagem:** TypeScript
-* **Back-end:** Node.js (com Express)
-* **Front-end:** React (construído via Vite para inicialização rápida)
+```text
+Apresentação (React/Vite)
+        ↓ HTTP
+Serviços (Node.js/Express)
+        ↓ contratos
+Domínio (TypeScript)
+        ↓ interfaces
+Persistência (Memória / Supabase PostgreSQL)
+```
 
-**Armazenamento e Hospedagem:**
-* **Banco de Dados:** PostgreSQL (Hospedado via Supabase)
-* **Hospedagem em Nuvem (Gratuita):** Vercel (Front-end) e Render (Back-end)
+### Pastas principais
 
-**Qualidade de Código e Padrões (Etapa 9):**
-* **Linting e Formatação:** ESLint e Prettier (configurados para impor a convenção de nomes, indentação de 4 espaços e limite de 120 caracteres por linha).
-* **Controle de Versão:** Git e GitHub (com histórico de commits frequentes da equipe).
+```text
+src/
+├── apresentacao/   # React + Vite
+├── aplicacao/      # Casos de uso e serviços
+├── dominio/        # Entidades, regras e contratos
+├── persistencia/   # Repositórios em memória e Supabase
+└── servicos/       # API HTTP com Express
+```
 
-**Testes (Validação dos Critérios de Aceitação):**
-* **Framework de Testes:** Vitest (ou Jest) para execução dos testes unitários e de integração (validação da fila e regras de negócio).
+## Requisitos
 
-# 3. Como Execultar o Projeto
-npm install -D vitest typescript
-npm install, npm run dev
+- Node.js 20 ou superior
+- npm
+- Para persistência real: projeto Supabase com PostgreSQL
 
+## Instalação
+
+```bash
+npm install
+```
+
+## Execução em desenvolvimento
+
+O comando abaixo inicia API e front-end ao mesmo tempo:
+
+```bash
+npm run dev
+```
+
+- Front-end: http://localhost:5173
+- API: http://localhost:3000
+- Saúde da API: http://localhost:3000/api/saude
+
+Também é possível executar separadamente:
+
+```bash
+npm run dev:api
+npm run dev:web
+```
+
+Sem variáveis do Supabase, a API usa `RepositorioChamadoMemoria`, permitindo executar e testar o projeto sem banco externo.
+
+## Persistência Supabase
+
+1. Crie um projeto no Supabase.
+2. Execute o conteúdo de `database.sql` no SQL Editor.
+3. Copie `.env.example` para `.env`.
+4. Preencha `SUPABASE_URL` e `SUPABASE_ANON_KEY`.
+5. Execute `npm run dev`.
+
+Quando as duas variáveis estiverem preenchidas, a API passa a usar `RepositorioChamadoSupabase`.
+
+O índice crítico para a fila está criado em `chamados.status`, conforme definido na arquitetura.
+
+## Usuários de demonstração
+
+No modo sem Supabase existem usuários pré-cadastrados:
+
+| Perfil | E-mail | Senha |
+|---|---|---|
+| Cliente | cliente@helpflow.local | 123456 |
+| Técnico | tecnico@helpflow.local | 123456 |
+
+Também existem usuários `cliente2@helpflow.local` e `tecnico2@helpflow.local` para demonstração de cenários com dois usuários.
+
+> A autenticação nesta etapa é uma autenticação acadêmica simplificada para demonstração. Para produção, deve-se substituir por autenticação segura e sessão/token.
+
+## Testes
+
+```bash
+npm test
+```
+
+Para acompanhar os testes durante o desenvolvimento:
+
+```bash
+npm run test:watch
+```
+
+## Verificação de tipos
+
+```bash
+npm run check
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Critérios cobertos nesta base
+
+- CA-01: chamado novo inicia como `Aberto` e aparece na fila.
+- CA-02: cliente não pode alterar o status.
+- CA-03: estruturas e consultas estão preparadas para fila e histórico com limite de 500/50 registros.
+- CA-04: mensagens preservam data e hora do envio.
+- CA-05: atribuição utiliza controle de versão para bloquear conflito entre técnicos.
+- CA-06: instruções de instalação e execução estão registradas neste README.
+- CA-07: a matriz de rastreabilidade permanece no Documento de Arquitetura.
+
+## Observação sobre CA-03
+
+A validação final de tempo (até 2 segundos para 500 chamados e até 3 segundos para 50 mensagens) deve ser demonstrada em ambiente carregado com dados. O código contém limite de 500 chamados na fila e 50 mensagens por histórico para manter o cenário alinhado ao critério de aceitação.
