@@ -1,10 +1,19 @@
+import { CategoriaChamado } from './CategoriaChamado';
 import { DadoInvalidoException } from './DadoInvalidoException';
+import { StatusChamado } from './StatusChamado';
 
-// Enums para limitar as opções de status e categoria
-export enum StatusChamado {
-    ABERTO = "Aberto",
-    EM_ANDAMENTO = "Em Andamento",
-    RESOLVIDO = "Resolvido"
+export { StatusChamado } from './StatusChamado';
+
+export interface DadosChamado {
+    id: string;
+    clienteId: string;
+    titulo: string;
+    descricao: string;
+    categoria: CategoriaChamado;
+    dataAbertura: Date;
+    status: StatusChamado;
+    tecnicoResponsavelId: string | null;
+    versao: number;
 }
 
 export class Chamado {
@@ -12,49 +21,105 @@ export class Chamado {
     private readonly clienteId: string;
     private readonly titulo: string;
     private readonly descricao: string;
+    private readonly categoria: CategoriaChamado;
     private readonly dataAbertura: Date;
     private status: StatusChamado;
     private tecnicoResponsavelId: string | null;
-    private versao: number; // Suporte ao bloqueio otimista (RF-005)
+    private versao: number;
 
-    constructor(id: string, clienteId: string, titulo: string, descricao: string) {
-        if (!titulo || titulo.length < 5) {
-            throw new DadoInvalidoException("O título do chamado deve ter pelo menos 5 caracteres.");
-        }
-        if (!descricao || descricao.length < 10) {
-            throw new DadoInvalidoException("A descrição precisa ser mais detalhada.");
+    constructor(id: string, clienteId: string, titulo: string, descricao: string, categoria: CategoriaChamado) {
+        this.validarDadosBasicos(titulo, descricao);
+        if (!Object.values(CategoriaChamado).includes(categoria)) {
+            throw new DadoInvalidoException('Categoria do chamado inválida.');
         }
 
         this.id = id;
         this.clienteId = clienteId;
-        this.titulo = titulo;
-        this.descricao = descricao;
-        this.dataAbertura = new Date(); // Data automática de abertura (RF-002)
-        this.status = StatusChamado.ABERTO; // CA-01: Chamado recém-criado exibe status Aberto
+        this.titulo = titulo.trim();
+        this.descricao = descricao.trim();
+        this.categoria = categoria;
+        this.dataAbertura = new Date();
+        this.status = StatusChamado.ABERTO;
         this.tecnicoResponsavelId = null;
         this.versao = 1;
     }
 
-    // Método para o RF-005: Atribuir técnico
-    public atribuirTecnico(tecnicoId: string): void {
-        if (this.tecnicoResponsavelId !== null) {
-            throw new DadoInvalidoException("O chamado já foi atribuído a outro técnico."); // Garante o CA-05
+    private validarDadosBasicos(titulo: string, descricao: string): void {
+        if (!titulo || titulo.trim().length < 5) {
+            throw new DadoInvalidoException('O título do chamado deve ter pelo menos 5 caracteres.');
         }
+        if (!descricao || descricao.trim().length < 10) {
+            throw new DadoInvalidoException('A descrição precisa ser mais detalhada.');
+        }
+    }
+
+    public static reidratar(dados: DadosChamado): Chamado {
+        const chamado = new Chamado(dados.id, dados.clienteId, dados.titulo, dados.descricao, dados.categoria);
+        chamado.status = dados.status;
+        chamado.tecnicoResponsavelId = dados.tecnicoResponsavelId;
+        chamado.versao = dados.versao;
+        Object.defineProperty(chamado, 'dataAbertura', { value: new Date(dados.dataAbertura), writable: false });
+        return chamado;
+    }
+
+    public atribuirTecnico(tecnicoId: string): void {
+        if (!tecnicoId.trim()) {
+            throw new DadoInvalidoException('O técnico responsável é obrigatório.');
+        }
+        if (this.tecnicoResponsavelId !== null) {
+            throw new DadoInvalidoException('O chamado já foi atribuído a outro técnico.');
+        }
+
         this.tecnicoResponsavelId = tecnicoId;
         this.status = StatusChamado.EM_ANDAMENTO;
         this.versao += 1;
     }
 
-    // Método para o RF-007: Alterar status
     public alterarStatus(novoStatus: StatusChamado, isTecnico: boolean): void {
         if (!isTecnico) {
-            throw new DadoInvalidoException("Apenas usuários técnicos podem alterar o status."); // Garante o CA-02
+            throw new DadoInvalidoException('Apenas usuários técnicos podem alterar o status.');
         }
+        if (!Object.values(StatusChamado).includes(novoStatus)) {
+            throw new DadoInvalidoException('Status do chamado inválido.');
+        }
+
         this.status = novoStatus;
         this.versao += 1;
     }
 
-    // Getters
-    public getId(): string { return this.id; }
-    public getStatus(): StatusChamado { return this.status; }
+    public getId(): string {
+        return this.id;
+    }
+
+    public getClienteId(): string {
+        return this.clienteId;
+    }
+
+    public getTitulo(): string {
+        return this.titulo;
+    }
+
+    public getDescricao(): string {
+        return this.descricao;
+    }
+
+    public getCategoria(): CategoriaChamado {
+        return this.categoria;
+    }
+
+    public getDataAbertura(): Date {
+        return new Date(this.dataAbertura);
+    }
+
+    public getStatus(): StatusChamado {
+        return this.status;
+    }
+
+    public getTecnicoResponsavelId(): string | null {
+        return this.tecnicoResponsavelId;
+    }
+
+    public getVersao(): number {
+        return this.versao;
+    }
 }
