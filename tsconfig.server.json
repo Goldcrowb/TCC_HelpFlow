@@ -4,13 +4,8 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "noEmit": false,
-    "outDir": "dist",
+    "outDir": "dist/server",
     "rootDir": "src"
   },
-  "include": [
-    "src/dominio/**/*.ts",
-    "src/aplicacao/**/*.ts",
-    "src/persistencia/**/*.ts",
-    "src/servicos/**/*.ts"
-  ]
+  "include": ["src/dominio/**/*.ts", "src/aplicacao/**/*.ts", "src/persistencia/**/*.ts", "src/servicos/**/*.ts"]
 }

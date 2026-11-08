@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/apresentacao/api.ts", "src/apresentacao/offline.ts"]
+}
