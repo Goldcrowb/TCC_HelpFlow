@@ -11,7 +11,8 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
         const index = this.dados.findIndex((item) => item.getId() === chamado.getId());
 
         if (index < 0) {
-            this.dados.push(chamado);
+            if (chamado.getVersao() !== 1) return false;
+            this.dados.push(this.clonarChamado(chamado));
             return true;
         }
 
@@ -32,7 +33,7 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
 
     async listarTodosAbertos(): Promise<Chamado[]> {
         return this.dados
-            .filter((chamado) => chamado.getStatus() === StatusChamado.ABERTO)
+            .filter((chamado) => chamado.getStatus() === StatusChamado.ABERTO && chamado.getTecnicoResponsavelId() === null)
             .sort((a, b) => a.getDataAbertura().getTime() - b.getDataAbertura().getTime())
             .map((chamado) => this.clonarChamado(chamado));
     }
@@ -44,6 +45,12 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
             .map((chamado) => this.clonarChamado(chamado));
     }
 
+    async listarPorTecnico(tecnicoId: string): Promise<Chamado[]> {
+        return this.dados.filter((chamado) => chamado.getTecnicoResponsavelId() === tecnicoId)
+            .sort((a, b) => b.getDataAbertura().getTime() - a.getDataAbertura().getTime())
+            .map((chamado) => this.clonarChamado(chamado));
+    }
+
     async adicionarMensagem(chamadoId: string, mensagem: Mensagem): Promise<boolean> {
         const chamadoExiste = this.dados.some((chamado) => chamado.getId() === chamadoId);
         if (!chamadoExiste) {
@@ -51,6 +58,7 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
         }
 
         const lista = this.mensagens.get(chamadoId) ?? [];
+        if (lista.some((item) => item.getId() === mensagem.getId())) return true;
         lista.push(mensagem);
         this.mensagens.set(chamadoId, lista);
         return true;
@@ -59,6 +67,7 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
     async listarMensagens(chamadoId: string): Promise<Mensagem[]> {
         return [...(this.mensagens.get(chamadoId) ?? [])]
             .sort((a, b) => a.getDataEnvio().getTime() - b.getDataEnvio().getTime())
+            .slice(-50)
             .map((mensagem) => Mensagem.reidratar({
                 id: mensagem.getId(),
                 autorId: mensagem.getAutorId(),

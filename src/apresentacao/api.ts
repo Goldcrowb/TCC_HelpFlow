@@ -4,7 +4,6 @@ export interface UsuarioSessao {
     email: string;
     perfil: 'cliente' | 'tecnico';
 }
-
 export interface ChamadoView {
     id: string;
     clienteId: string;
@@ -16,74 +15,61 @@ export interface ChamadoView {
     tecnicoResponsavelId: string | null;
     versao: number;
 }
+export interface MensagemView { id: string; autorId: string; conteudo: string; dataEnvio: string }
+export interface DetalhesChamado { chamado: ChamadoView; mensagens: MensagemView[] }
 
-const sessaoHeaders = (usuario: UsuarioSessao) => ({
-    'Content-Type': 'application/json',
-    'x-usuario-id': usuario.id,
-    'x-usuario-perfil': usuario.perfil,
-    'x-usuario-email': usuario.email
-});
+export class ErroApi extends Error {
+    constructor(mensagem: string, public readonly status: number) { super(mensagem); }
+}
 
 async function requisicao<T>(url: string, init?: RequestInit): Promise<T> {
-    const resposta = await fetch(url, init);
-    const dados = await resposta.json().catch(() => ({}));
-    if (!resposta.ok) {
-        throw new Error(dados.erro ?? 'Não foi possível concluir a operação.');
+    let resposta: Response;
+    try {
+        resposta = await fetch(url, {
+            credentials: 'same-origin',
+            ...init,
+            headers: { ...(!['GET', 'HEAD'].includes(init?.method ?? 'GET') ? { 'Content-Type': 'application/json' } : {}), ...init?.headers },
+            signal: AbortSignal.timeout(90_000) // o plano gratuito pode demorar a iniciar
+        });
+    } catch {
+        throw new ErroApi('Sem conexão com o servidor. Tente novamente quando estiver online.', 0);
     }
+    const dados = await resposta.json().catch(() => ({}));
+    if (!resposta.ok) throw new ErroApi(dados.erro ?? 'Não foi possível concluir a operação.', resposta.status);
     return dados as T;
 }
 
-export async function login(email: string, senha: string): Promise<UsuarioSessao> {
-    const dados = await requisicao<{ usuario: UsuarioSessao }>('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, senha })
-    });
-    return dados.usuario;
+export function ehFalhaDeRede(erro: unknown): boolean { return erro instanceof ErroApi && erro.status === 0; }
+export async function login(email: string, senha: string) {
+    return (await requisicao<{ usuario: UsuarioSessao }>('/api/auth/login', {
+        method: 'POST', body: JSON.stringify({ email, senha })
+    })).usuario;
 }
-
-export async function criarChamado(usuario: UsuarioSessao, titulo: string, descricao: string, categoria: string) {
+export async function consultarSessao() {
+    return (await requisicao<{ usuario: UsuarioSessao }>('/api/auth/session')).usuario;
+}
+export async function logout() { await requisicao('/api/auth/logout', { method: 'POST' }); }
+export async function criarChamado(_usuario: UsuarioSessao, titulo: string, descricao: string, categoria: string, operacaoId: string = crypto.randomUUID()) {
     return requisicao<ChamadoView>('/api/chamados', {
-        method: 'POST',
-        headers: sessaoHeaders(usuario),
-        body: JSON.stringify({ titulo, descricao, categoria })
+        method: 'POST', body: JSON.stringify({ titulo, descricao, categoria, operacaoId })
     });
 }
-
-export async function listarMeusChamados(usuario: UsuarioSessao) {
-    return requisicao<ChamadoView[]>('/api/chamados/meus', { headers: sessaoHeaders(usuario) });
+export async function listarMeusChamados(_usuario: UsuarioSessao) { return requisicao<ChamadoView[]>('/api/chamados/meus'); }
+export async function listarFila(_usuario: UsuarioSessao) { return requisicao<ChamadoView[]>('/api/chamados/fila'); }
+export async function listarAtendimentos(_usuario: UsuarioSessao) { return requisicao<ChamadoView[]>('/api/chamados/atendimentos'); }
+export async function detalhesChamado(_usuario: UsuarioSessao, id: string) {
+    return requisicao<DetalhesChamado>(`/api/chamados/${encodeURIComponent(id)}`);
 }
-
-export async function listarFila(usuario: UsuarioSessao) {
-    return requisicao<ChamadoView[]>('/api/chamados/fila', { headers: sessaoHeaders(usuario) });
+export async function atribuirChamado(_usuario: UsuarioSessao, id: string) {
+    return requisicao<ChamadoView>(`/api/chamados/${encodeURIComponent(id)}/atribuir`, { method: 'POST' });
 }
-
-export async function detalhesChamado(usuario: UsuarioSessao, id: string) {
-    return requisicao<{ chamado: ChamadoView; mensagens: { id: string; autorId: string; conteudo: string; dataEnvio: string }[] }>(
-        `/api/chamados/${id}`,
-        { headers: sessaoHeaders(usuario) }
-    );
-}
-
-export async function atribuirChamado(usuario: UsuarioSessao, id: string) {
-    return requisicao<ChamadoView>(`/api/chamados/${id}/atribuir`, {
-        method: 'POST',
-        headers: sessaoHeaders(usuario)
+export async function alterarStatus(_usuario: UsuarioSessao, id: string, status: string) {
+    return requisicao<ChamadoView>(`/api/chamados/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH', body: JSON.stringify({ status })
     });
 }
-
-export async function alterarStatus(usuario: UsuarioSessao, id: string, status: string) {
-    return requisicao<ChamadoView>(`/api/chamados/${id}/status`, {
-        method: 'PATCH',
-        headers: sessaoHeaders(usuario),
-        body: JSON.stringify({ status })
-    });
-}
-
-export async function adicionarMensagem(usuario: UsuarioSessao, id: string, conteudo: string) {
-    return requisicao(`/api/chamados/${id}/mensagens`, {
-        method: 'POST',
-        headers: sessaoHeaders(usuario),
-        body: JSON.stringify({ conteudo })
+export async function adicionarMensagem(_usuario: UsuarioSessao, id: string, conteudo: string, operacaoId: string = crypto.randomUUID()) {
+    return requisicao<MensagemView>(`/api/chamados/${encodeURIComponent(id)}/mensagens`, {
+        method: 'POST', body: JSON.stringify({ conteudo, operacaoId })
     });
 }

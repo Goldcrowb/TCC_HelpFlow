@@ -1,0 +1,18 @@
+HELPFLOW — SISTEMA DE CHAMADOS DE SUPORTE TÉCNICO
+Versão 2.0.0 | TCC de Engenharia de Software
+
+1. Para conhecer o projeto, abra README.md.
+2. Para executar no Windows, instale Node.js 22 e use INICIAR-LOCAL.bat.
+   Pelo terminal: npm ci e, em seguida, npm run dev.
+3. Acesse http://localhost:5173 e utilize as contas de teste:
+   Cliente: cliente@helpflow.local | Senha: 123456
+   Técnico: tecnico@helpflow.local | Senha: 123456
+4. A configuração de banco e hospedagem está em docs/05_manual_de_instalacao.md.
+5. A apresentação está em apresentacao/Apresentacao_HelpFlow_TCC.pptx.
+6. Os testes e as verificações restantes estão nos documentos 04 e 08.
+
+ATENÇÃO
+O projeto não foi publicado automaticamente. Para disponibilizá-lo na
+internet, é necessário configurar o Supabase e criar o serviço no Render.
+Os testes locais não substituem a avaliação de desempenho na hospedagem.
+Não use dados pessoais reais nas contas públicas de demonstração.

@@ -9,6 +9,8 @@ call npm test
 if errorlevel 1 goto :falha
 call npm run build
 if errorlevel 1 goto :falha
+call npm run test:build
+if errorlevel 1 goto :falha
 echo.
 echo TODOS OS COMANDOS CONCLUIDOS COM SUCESSO.
 pause

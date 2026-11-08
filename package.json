@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "test:api": "vitest run src/servicos/server.test.ts"
+    "test:api": "vitest run src/servicos/server.test.ts",
+    "test:build": "node scripts/verificar_build.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

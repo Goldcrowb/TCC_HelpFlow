@@ -11,6 +11,7 @@ export interface CriarChamadoInput {
     titulo: string;
     descricao: string;
     categoria: CategoriaChamado;
+    operacaoId?: string;
 }
 
 export class ChamadoService {
@@ -18,14 +19,34 @@ export class ChamadoService {
 
     public async criarChamado(usuario: Usuario, dados: CriarChamadoInput): Promise<Chamado> {
         this.exigirPerfil(usuario, PerfilUsuario.CLIENTE);
-        const chamado = new Chamado(gerarId(), usuario.getId(), dados.titulo, dados.descricao, dados.categoria);
-        await this.repositorio.salvar(chamado);
+        const id = validarIdOperacao(dados.operacaoId) ?? gerarId();
+        const existente = await this.repositorio.buscarPorId(id);
+        if (existente) {
+            if (existente.getClienteId() !== usuario.getId() || existente.getTitulo() !== dados.titulo.trim()
+                || existente.getDescricao() !== dados.descricao.trim() || existente.getCategoria() !== dados.categoria) {
+                throw new DadoInvalidoException('Identificador de operação já utilizado.');
+            }
+            return existente;
+        }
+        const chamado = new Chamado(id, usuario.getId(), dados.titulo, dados.descricao, dados.categoria);
+        const salvo = await this.repositorio.salvar(chamado);
+        if (!salvo) {
+            const repetido = await this.repositorio.buscarPorId(id);
+            if (repetido && repetido.getClienteId() === usuario.getId() && repetido.getTitulo() === dados.titulo.trim()
+                && repetido.getDescricao() === dados.descricao.trim() && repetido.getCategoria() === dados.categoria) return repetido;
+            throw new DadoInvalidoException('Não foi possível registrar o chamado.');
+        }
         return chamado;
     }
 
     public async listarChamadosDoCliente(usuario: Usuario): Promise<Chamado[]> {
         this.exigirPerfil(usuario, PerfilUsuario.CLIENTE);
         return this.repositorio.listarPorCliente(usuario.getId());
+    }
+
+    public async listarAtendimentosDoTecnico(usuario: Usuario): Promise<Chamado[]> {
+        this.exigirPerfil(usuario, PerfilUsuario.TECNICO);
+        return this.repositorio.listarPorTecnico(usuario.getId());
     }
 
     public async listarFilaTecnico(usuario: Usuario): Promise<Chamado[]> {
@@ -52,11 +73,7 @@ export class ChamadoService {
         this.exigirPerfil(usuario, PerfilUsuario.TECNICO);
         const chamado = await this.obterChamado(chamadoId);
 
-        try {
-            chamado.atribuirTecnico(usuario.getId());
-        } catch (erro) {
-            throw erro;
-        }
+        chamado.atribuirTecnico(usuario.getId());
 
         const salvo = await this.repositorio.salvar(chamado);
         if (!salvo) {
@@ -68,6 +85,9 @@ export class ChamadoService {
     public async alterarStatus(usuario: Usuario, chamadoId: string, novoStatus: StatusChamado): Promise<Chamado> {
         this.exigirPerfil(usuario, PerfilUsuario.TECNICO);
         const chamado = await this.obterChamado(chamadoId);
+        if (chamado.getTecnicoResponsavelId() !== usuario.getId()) {
+            throw new DadoInvalidoException('Assuma o chamado antes de alterar o status.');
+        }
         chamado.alterarStatus(novoStatus, true);
 
         const salvo = await this.repositorio.salvar(chamado);
@@ -77,14 +97,16 @@ export class ChamadoService {
         return chamado;
     }
 
-    public async adicionarMensagem(usuario: Usuario, chamadoId: string, conteudo: string): Promise<Mensagem> {
+    public async adicionarMensagem(usuario: Usuario, chamadoId: string, conteudo: string, operacaoId?: string): Promise<Mensagem> {
         const chamado = await this.obterChamado(chamadoId);
-        const podeEnviar = usuario.getPerfil() === PerfilUsuario.TECNICO || chamado.getClienteId() === usuario.getId();
+        const podeEnviar = usuario.getPerfil() === PerfilUsuario.TECNICO
+            ? chamado.getTecnicoResponsavelId() === usuario.getId()
+            : chamado.getClienteId() === usuario.getId();
         if (!podeEnviar) {
             throw new DadoInvalidoException('Usuário sem permissão para enviar mensagem neste chamado.');
         }
 
-        const mensagem = new Mensagem(gerarId(), usuario.getId(), conteudo, new Date());
+        const mensagem = new Mensagem(validarIdOperacao(operacaoId) ?? gerarId(), usuario.getId(), conteudo, new Date());
         const salvo = await this.repositorio.adicionarMensagem(chamadoId, mensagem);
         if (!salvo) {
             throw new DadoInvalidoException('Não foi possível salvar a mensagem.');
@@ -108,6 +130,14 @@ export class ChamadoService {
 }
 
 
+
+function validarIdOperacao(id?: string): string | undefined {
+    if (id === undefined) return undefined;
+    if (typeof id !== 'string' || !/^[a-f0-9-]{36}$/i.test(id) || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+        throw new DadoInvalidoException('Identificador de operação inválido.');
+    }
+    return id;
+}
 
 function gerarId(): string {
     return globalThis.crypto?.randomUUID?.() ?? `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;

@@ -36,9 +36,10 @@ describe('ChamadoService', () => {
             categoria: CategoriaChamado.SOFTWARE
         });
 
-        await service.atribuirChamado(tecnico!, chamado.getId());
+        const atribuido = await service.atribuirChamado(tecnico!, chamado.getId());
         expect((await service.listarFilaTecnico(tecnico!)).length).toBe(0);
-        expect(chamado.getTecnicoResponsavelId()).toBe(tecnico!.getId());
+        expect(atribuido.getTecnicoResponsavelId()).toBe(tecnico!.getId());
+        expect((await service.listarAtendimentosDoTecnico(tecnico!)).length).toBe(1);
         expect(tecnico!.getPerfil()).toBe(PerfilUsuario.TECNICO);
     });
 });

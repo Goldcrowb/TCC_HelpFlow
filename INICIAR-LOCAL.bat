@@ -3,10 +3,10 @@ chcp 65001 >nul
 cd /d "%~dp0"
 echo =========================================
 echo HelpFlow TCC - ambiente local
- echo =========================================
+echo =========================================
 where node >nul 2>nul
 if errorlevel 1 (
-  echo ERRO: instale Node.js 22 primeiro. Consulte docs\05_manual_instalacao_uso_publicacao.md
+  echo ERRO: instale Node.js 22 primeiro. Consulte docs\05_manual_de_instalacao.md
   pause
   exit /b 1
 )

@@ -45,6 +45,7 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
         if (chamado.getVersao() === 1) {
             const { error } = await this.cliente.from('chamados').insert(payload);
             if (error) {
+                if (error.code === '23505') return false; // retry concorrente de uma mesma operação
                 throw new DadoInvalidoException(`Erro ao criar chamado: ${error.message}`);
             }
             return true;
@@ -78,6 +79,7 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
             .from('chamados')
             .select('*')
             .eq('status', StatusChamado.ABERTO)
+            .is('tecnico_id', null)
             .order('data_abertura', { ascending: true })
             .limit(500);
 
@@ -100,6 +102,14 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
         return (data as ChamadoRow[]).map((row) => this.converterChamado(row));
     }
 
+    async listarPorTecnico(tecnicoId: string): Promise<Chamado[]> {
+        const { data, error } = await this.cliente.from('chamados')
+            .select('*').eq('tecnico_id', tecnicoId)
+            .order('data_abertura', { ascending: false }).limit(500);
+        if (error) throw new DadoInvalidoException(`Erro ao listar atendimentos: ${error.message}`);
+        return (data as ChamadoRow[]).map((row) => this.converterChamado(row));
+    }
+
     async adicionarMensagem(chamadoId: string, mensagem: Mensagem): Promise<boolean> {
         const payload = {
             id: mensagem.getId(),
@@ -110,6 +120,13 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
         };
         const { error } = await this.cliente.from('mensagens').insert(payload);
         if (error) {
+            if (error.code === '23505') {
+                const { data: existente, error: consultaErro } = await this.cliente.from('mensagens')
+                    .select('chamado_id, autor_id, conteudo').eq('id', mensagem.getId()).maybeSingle();
+                if (!consultaErro && existente && existente.chamado_id === chamadoId &&
+                    existente.autor_id === mensagem.getAutorId() && existente.conteudo === mensagem.getConteudo()) return true;
+                throw new DadoInvalidoException('Identificador de mensagem já utilizado.');
+            }
             throw new DadoInvalidoException(`Erro ao salvar mensagem: ${error.message}`);
         }
         return true;
@@ -120,13 +137,13 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
             .from('mensagens')
             .select('*')
             .eq('chamado_id', chamadoId)
-            .order('data_envio', { ascending: true })
+            .order('data_envio', { ascending: false })
             .limit(50);
 
         if (error) {
             throw new DadoInvalidoException(`Erro ao listar mensagens: ${error.message}`);
         }
-        return (data as MensagemRow[]).map((row) => Mensagem.reidratar({
+        return (data as MensagemRow[]).reverse().map((row) => Mensagem.reidratar({
             id: row.id,
             autorId: row.autor_id,
             conteudo: row.conteudo,
@@ -151,11 +168,14 @@ export class RepositorioChamadoSupabase implements RepositorioChamado {
 
 export function criarClienteSupabase(): SupabaseClient {
     const url = process.env.SUPABASE_URL;
-    const chave = process.env.SUPABASE_ANON_KEY;
+    const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!url || !chave) {
-        throw new Error('SUPABASE_URL e SUPABASE_ANON_KEY devem ser configuradas.');
+        throw new Error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem ser configuradas no servidor.');
     }
 
-    return createClient(url, chave);
+    return createClient(url, chave, {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(8000) }) }
+    });
 }
