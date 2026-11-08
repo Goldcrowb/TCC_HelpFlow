@@ -2,16 +2,23 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "noEmit": false,
     "outDir": "dist/server",
-    "rootDir": "src"
+    "rootDir": "src",
+    "types": ["node"]
   },
   "include": [
     "src/dominio/**/*.ts",
     "src/aplicacao/**/*.ts",
     "src/persistencia/**/*.ts",
     "src/servicos/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
   ]
 }
