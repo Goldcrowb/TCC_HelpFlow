@@ -1,0 +1,24 @@
+HELPFLOW - ENTREGA COMPLETA DO TCC (08/11/2026) - VERSAO 2.0.0
+
+1) LEIA README.md e docs/05_manual_instalacao_uso_publicacao.md
+2) PARA RODAR NO WINDOWS: instale Node.js 22 e clique em INICIAR-LOCAL.bat
+   ou no terminal: npm ci && npm run dev
+3) CLIENTE DEMO: cliente@helpflow.local / 123456
+   TECNICO DEMO: tecnico@helpflow.local / 123456
+4) PARA O SITE FICAR ONLINE GRATUITAMENTE:
+   - Configurar o Supabase Free e executar database.sql
+   - Enviar o projeto (sem node_modules, dist e .env) para seu GitHub
+   - Criar um Web Service Free na Render usando render.yaml
+   - Preencher SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no painel Render
+   - Conferir o link, os logins e a persistencia
+5) SLIDES DA APRESENTACAO:
+   apresentacao/HelpFlow_Defesa_12_Minutos.pptx
+6) O QUE PRECISA SER VALIDADO NO AMBIENTE REAL:
+   docs/08_pendencias_validacao_externa.md
+
+NENHUM SITE FOI PUBLICADO AUTOMATICAMENTE.
+Este pacote inclui codigo e configuracao, nao credenciais de sua conta.
+Os 26 testes automatizados passam localmente. CA-03 e CA-06
+necessitam medicao e validacao externas.
+
+NÃO USE AS CONTAS PUBLICAS DE DEMONSTRACAO PARA DADOS REAIS.
