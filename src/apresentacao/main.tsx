@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import {
     adicionarMensagem, alterarStatus, atribuirChamado, ChamadoView, consultarSessao,
     criarChamado, detalhesChamado, ehFalhaDeRede, ErroApi, listarAtendimentos,
-    listarFila, listarMeusChamados, login, logout, UsuarioSessao
+    listarFila, listarMeusChamados, login, logout, UsuarioSessao, cadastrarUsuario,
+    listarSolicitacoesTecnicos, decidirSolicitacaoTecnico, SolicitacaoTecnico, PerfilCadastro
 } from './api';
 import {
     adicionarPendente, descartarPendente, eventoPendencias, lerPendencias,
@@ -96,25 +97,56 @@ function App() {
             {usuario.perfil === 'cliente' ? <PainelCliente usuario={usuario} onError={setErro} atualizacao={atualizacao} /> : <PainelTecnico usuario={usuario} onError={setErro} atualizacao={atualizacao} />}
         </main>
         {erro && <div className="toast error" role="alert">{erro}<button aria-label="Fechar aviso" onClick={() => setErro('')}>×</button></div>}
-        <footer className="footer">HelpFlow · Projeto acadêmico de Engenharia de Software · Versão 2.0</footer>
+        <footer className="footer">HelpFlow · Projeto acadêmico de Engenharia de Software · Versão 2.1</footer>
     </div>;
 }
 
 function Login({ onLogin, onError, erro }: { onLogin: (u: UsuarioSessao) => void; onError: (msg: string) => void; erro: string }) {
-    const [email, setEmail] = useState('cliente@helpflow.local');
-    const [senha, setSenha] = useState('123456');
+    const [criandoConta, setCriandoConta] = useState(false);
+    const [email, setEmail] = useState('');
+    const [senha, setSenha] = useState('');
+    const [nome, setNome] = useState('');
+    const [confirmacao, setConfirmacao] = useState('');
+    const [perfil, setPerfil] = useState<PerfilCadastro>('cliente');
+    const [aviso, setAviso] = useState('');
     const [carregando, setCarregando] = useState(false);
+
     async function enviar(event: FormEvent) {
-        event.preventDefault(); setCarregando(true); onError('');
-        try { onLogin(await login(email, senha)); }
-        catch (e) { onError(mensagemErro(e)); }
+        event.preventDefault(); setCarregando(true); onError(''); setAviso('');
+        try {
+            if (criandoConta) {
+                if (senha !== confirmacao) throw new Error('A confirmação de senha é diferente.');
+                const cadastro = await cadastrarUsuario(nome, email, senha, perfil);
+                setCriandoConta(false); setSenha(''); setConfirmacao('');
+                setAviso(cadastro.situacao === 'pendente'
+                    ? 'Seu pedido de acesso como técnico foi recebido. Um técnico autorizado precisa aprová-lo. Tente entrar depois da aprovação.'
+                    : 'Cadastro realizado! Agora entre com seu e-mail e senha.');
+            } else onLogin(await login(email, senha));
+        } catch (e) { onError(mensagemErro(e)); }
         finally { setCarregando(false); }
     }
+    function mudarTela() { setCriandoConta(!criandoConta); onError(''); setAviso(''); setSenha(''); setConfirmacao(''); }
     return <main className="login-page"><div className="login-layout">
-        <section className="login-intro"><span className="brand-icon big">H</span><span className="eyebrow">SISTEMA DE ATENDIMENTO</span><h1>Solicitações de suporte <em>em um só lugar.</em></h1><p>Registre chamados, acompanhe o andamento e consulte as respostas da equipe.</p><div className="intro-points"><span>✓ Chamados organizados</span><span>✓ Histórico de mensagens</span><span>✓ Cliente e técnico</span></div></section>
-        <section className="login-card"><span className="login-step">ACESSAR O HELPFLOW</span><h2>Acesso ao sistema</h2><p>Entre com sua conta para acessar os chamados.</p><form onSubmit={enviar} className="form-grid"><label>E-mail<input type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} /></label><label>Senha<input type="password" autoComplete="current-password" required value={senha} onChange={(e) => setSenha(e.target.value)} /></label><button className="primary-btn" disabled={carregando}>{carregando ? 'Entrando...' : 'Entrar no HelpFlow'}</button></form>
-        {erro && <p role="alert" className="inline-error">{erro}</p>}
-        <div className="demo-access"><strong>Contas para demonstração</strong><button type="button" onClick={() => { setEmail('cliente@helpflow.local'); setSenha('123456'); }}>Acessar como cliente</button><button type="button" onClick={() => { setEmail('tecnico@helpflow.local'); setSenha('123456'); }}>Acessar como técnico</button><small>Ambiente acadêmico público. Não insira dados pessoais reais.</small></div></section>
+        <section className="login-intro"><span className="brand-icon big">H</span><span className="eyebrow">SISTEMA DE ATENDIMENTO</span><h1>Solicitações de suporte <em>em um só lugar.</em></h1><p>Registre chamados, acompanhe o andamento e consulte as respostas da equipe.</p><div className="intro-points"><span>✓ Chamados organizados</span><span>✓ Histórico de mensagens</span><span>✓ Cadastro de usuários</span></div></section>
+        <section className="login-card"><span className="login-step">{criandoConta ? 'NOVA CONTA' : 'ACESSAR O HELPFLOW'}</span>
+            <h2>{criandoConta ? 'Criar conta' : 'Acesso ao sistema'}</h2>
+            <p>{criandoConta ? 'Clientes podem entrar após o cadastro. Pedidos de acesso técnico passam por aprovação.' : 'Entre com sua conta para acessar os chamados.'}</p>
+            <form onSubmit={enviar} className="form-grid">
+                {criandoConta && <label>Nome completo<input type="text" autoComplete="name" minLength={3} maxLength={100} required value={nome} onChange={(e) => setNome(e.target.value)} /></label>}
+                <label>E-mail<input type="email" autoComplete="email" maxLength={254} required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+                <label>Senha<input type="password" minLength={criandoConta ? 10 : undefined} maxLength={128} autoComplete={criandoConta ? 'new-password' : 'current-password'} required value={senha} onChange={(e) => setSenha(e.target.value)} /></label>
+                {criandoConta && <>
+                    <label>Confirmar senha<input type="password" minLength={10} maxLength={128} autoComplete="new-password" required value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} /></label>
+                    <label>Tipo de cadastro<select value={perfil} onChange={(e) => setPerfil(e.target.value as PerfilCadastro)}><option value="cliente">Cliente</option><option value="tecnico">Técnico (requer aprovação)</option></select></label>
+                    {perfil === 'tecnico' && <p className="form-tip">O cadastro será enviado para avaliação. Você não terá acesso de técnico até ser aprovado.</p>}
+                </>}
+                <button className="primary-btn" disabled={carregando}>{carregando ? 'Aguarde...' : criandoConta ? 'Enviar cadastro' : 'Entrar no HelpFlow'}</button>
+            </form>
+            {aviso && <p className="form-success" role="status">{aviso}</p>}
+            {erro && <p role="alert" className="inline-error">{erro}</p>}
+            <div className="login-switch"><span>{criandoConta ? 'Já tem cadastro?' : 'Ainda não tem cadastro?'}</span><button type="button" className="button-link" onClick={mudarTela}>{criandoConta ? 'Voltar para o login' : 'Criar minha conta'}</button></div>
+            {!criandoConta && import.meta.env.DEV && <div className="demo-access"><strong>Contas locais para teste</strong><button type="button" onClick={() => { setEmail('cliente@helpflow.local'); setSenha('123456'); }}>Cliente de demonstração</button><button type="button" onClick={() => { setEmail('tecnico@helpflow.local'); setSenha('123456'); }}>Técnico de demonstração</button><small>Contas de exemplo são disponibilizadas apenas na execução local.</small></div>}
+        </section>
     </div></main>;
 }
 
@@ -137,6 +169,41 @@ function PainelCliente({ usuario, onError, atualizacao }: { usuario: UsuarioSess
         <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando chamados..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo="Nenhum chamado encontrado" texto="Abra um chamado ou altere os filtros para ver solicitações." /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} />)}</div>
         {selecionado && <Detalhes usuario={usuario} id={selecionado} onClose={() => setSelecionado(null)} onError={onError} onChanged={carregar} />}
     </>;
+}
+
+function PainelSolicitacoesTecnicos({ onError }: { onError: (msg: string) => void }) {
+    const [solicitacoes, setSolicitacoes] = useState<SolicitacaoTecnico[]>([]);
+    const [carregando, setCarregando] = useState(true);
+    const [ocupado, setOcupado] = useState('');
+    const [aberto, setAberto] = useState(false);
+    const carregar = useCallback(async () => {
+        try { setSolicitacoes(await listarSolicitacoesTecnicos()); }
+        catch (erro) { if (navigator.onLine) onError(mensagemErro(erro)); }
+        finally { setCarregando(false); }
+    }, [onError]);
+    useEffect(() => { void carregar(); }, [carregar]);
+
+    async function decidir(id: string, decisao: 'aprovar' | 'recusar') {
+        let motivo: string | undefined;
+        if (decisao === 'recusar') {
+            const resposta = prompt('Justificativa da recusa (opcional, até 500 caracteres):', '');
+            if (resposta === null) return;
+            motivo = resposta.trim();
+            if (motivo.length > 500) { onError('A justificativa deve ter até 500 caracteres.'); return; }
+        } else if (!confirm('Confirmar a aprovação desta conta como técnico?')) return;
+        setOcupado(id);
+        try { await decidirSolicitacaoTecnico(id, decisao, motivo); await carregar(); }
+        catch (erro) { onError(mensagemErro(erro)); await carregar(); }
+        finally { setOcupado(''); }
+    }
+    return <section className="approval-panel" aria-label="Solicitações de técnicos">
+        <div className="approval-heading"><div><span className="eyebrow dark">CONTROLE DE ACESSO</span><h3>Pedidos de acesso técnico <span className="approval-count">{solicitacoes.length}</span></h3><p>Confira as solicitações antes de liberar o painel técnico.</p></div>
+            <div className="approval-actions"><button className="button-outline" onClick={() => void carregar()} disabled={carregando}>Atualizar</button><button className="button-outline" onClick={() => setAberto(!aberto)} aria-expanded={aberto}>{aberto ? 'Ocultar pedidos' : 'Ver pedidos'}</button></div>
+        </div>
+        {aberto && <div className="approval-list">{carregando ? <p>Carregando solicitações...</p> : solicitacoes.length === 0 ? <p>Nenhuma solicitação aguardando aprovação.</p> : solicitacoes.map(s =>
+            <article className="approval-item" key={s.id}><div><strong>{s.nome}</strong><small>{s.email} · Solicitado em {formatarData(s.criadoEm)}</small></div><div className="approval-actions"><button className="button-small" disabled={!!ocupado} onClick={() => void decidir(s.id, 'aprovar')}>Aprovar</button><button className="button-outline" disabled={!!ocupado} onClick={() => void decidir(s.id, 'recusar')}>Recusar</button></div></article>
+        )}</div>}
+    </section>;
 }
 
 function FormularioChamado({ usuario, onError, onChanged }: { usuario: UsuarioSessao; onError: (msg: string) => void; onChanged: () => Promise<void> }) {
@@ -180,6 +247,7 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
     const filtrados = lista.filter((c) => `${c.titulo} ${c.descricao} ${c.categoria}`.toLowerCase().includes(pesquisa.toLowerCase()));
     return <><div className="section-heading"><div><span className="eyebrow dark">VISÃO DO SUPORTE</span><h2>Gerenciar atendimentos</h2><p>Organize os chamados e acompanhe cada atendimento.</p></div><button className="button-outline" onClick={() => void carregar()}>↻ Atualizar</button></div>
         <div className="stats"><IndicadorResumo label="Na fila" valor={fila.length} icon="▤"/><IndicadorResumo label="Meus atendimentos" valor={atendimentos.length} icon="◷"/><IndicadorResumo label="Resolvidos por mim" valor={atendimentos.filter((c) => c.status === 'Resolvido').length} icon="✓"/></div>
+        <PainelSolicitacoesTecnicos onError={onError} />
         <div className="toolbar"><div className="filter-tabs"><button className={aba === 'fila' ? 'active' : ''} onClick={() => setAba('fila')}>Fila geral <span>{fila.length}</span></button><button className={aba === 'meus' ? 'active' : ''} onClick={() => setAba('meus')}>Meus atendimentos <span>{atendimentos.length}</span></button></div><input className="search" aria-label="Pesquisar chamados" value={pesquisa} onChange={(e) => setPesquisa(e.target.value)} placeholder="Pesquisar chamados..." /></div>
         <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando atendimentos..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo={aba === 'fila' ? 'Fila vazia' : 'Nenhum atendimento encontrado'} texto={aba === 'fila' ? 'Não há chamados aguardando atendimento.' : 'Assuma um chamado na fila geral para começar.'} /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} onAssumir={aba === 'fila' ? () => void assumir(c.id) : undefined} ocupado={ocupado === c.id} />)}</div>
         {selecionado && <Detalhes usuario={usuario} id={selecionado} onClose={() => setSelecionado(null)} onError={onError} onChanged={carregar} />}

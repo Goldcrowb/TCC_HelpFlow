@@ -3,7 +3,7 @@ services:
     name: helpflow-tcc
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/saude
     envVars:
@@ -14,4 +14,10 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: TECNICO_INICIAL_EMAIL
+        sync: false
+      - key: TECNICO_INICIAL_SENHA
+        sync: false
+      - key: TECNICO_INICIAL_NOME
         sync: false

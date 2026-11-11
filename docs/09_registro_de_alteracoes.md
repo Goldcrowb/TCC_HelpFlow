@@ -1,5 +1,17 @@
 # 09 — Registro de alterações
 
+## Versão 2.1.0 — 11/11/2026
+
+- Cadastro público de clientes com acesso imediato e solicitação de técnico com situação pendente.
+- Tela de revisão de solicitações no painel do técnico, com ações de aprovar ou recusar.
+- Persistência de contas no PostgreSQL do Supabase (tabela `usuarios`), hash `scrypt` com sal e validações de e-mail, senha e perfil.
+- Autorização de aprovação realizada pelo backend; controle de concorrência para impedir decisão duplicada.
+- Primeiro técnico autorizado configurado por variáveis de ambiente, sem senha padrão na publicação.
+- Migração SQL separada para bases já utilizadas, sem apagar chamados e mensagens.
+- Adicionados 6 testes de cadastro e aprovação. Total: 32 testes locais aprovados. A verificação com Supabase/Render real ainda é necessária.
+- Atualizados manual, contrato da API, README e documento de arquitetura.
+
+
 ## Versão 2.0.0 — 08/11/2026
 
 Esta versão foi organizada a partir do repositório `Goldcrowb/TCC_HelpFlow` e acrescentou ajustes de código, testes e arquivos de implantação.

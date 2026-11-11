@@ -22,7 +22,7 @@ Os materiais de orientação também apresentam situações de aplicativo em seg
 | 27 | Caminho completo: entrada, validação, transmissão, recepção, persistência e apresentação | cliente React → Express → serviço → domínio → repositório → banco → UI | Automatizado com memória; Supabase pendente |
 | 28 | Provocar rede indisponível, entrada inválida, reinício | testes em `server.test.ts`, `offline.test.ts`; roteiro manual | Parcial: navegador/reinício de produção pendente |
 | 29 | Caso de teste para cada critério prioritário; esperado previamente | matriz em `docs/04_plano_de_testes.md` | Elaborado |
-| 30–31 | Registros de defeitos, correções e retestes | D-01 a D-06 no plano de testes; 26 testes passaram | Implementado |
+| 30–31 | Registros de defeitos, correções e retestes | D-01 a D-06 no plano de testes; 32 testes passaram (após ampliação da versão 2.1) | Implementado |
 | 32 | Cinco documentos centrais | requisitos, arquitetura, contrato de integração, plano/resultados, manual de instalação | Organizados em `docs/` |
 
 ## Fase 6 — Entrega e defesa

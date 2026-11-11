@@ -164,3 +164,79 @@ describe('API HelpFlow - aceitação e segurança', () => {
         expect(origem.status).toBe(403);
     });
 });
+
+describe('Cadastro de usuários e aprovação de técnicos', () => {
+    const emailTeste = (prefixo: string) => `${prefixo}-${crypto.randomUUID()}@example.test`;
+    const senhaForte = 'SenhaTeste#2026';
+
+    test('cliente novo cadastra, entra e abre um chamado próprio', async () => {
+        const email = emailTeste('cliente');
+        const novo = await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: {
+            nome: 'Cliente Cadastrado', email, senha: senhaForte, perfil: 'cliente'
+        }});
+        expect(novo.status).toBe(201);
+        expect(novo.dados.situacao).toBe('ativo');
+        const loginNovo = await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha: senhaForte } });
+        expect(loginNovo.status).toBe(200);
+        expect(loginNovo.dados.usuario.perfil).toBe('cliente');
+        const criado = await fazerRota('/api/chamados', { metodo: 'POST', cookie: loginNovo.cookie, corpo: {
+            titulo: 'Chamado de cadastro', descricao: 'Teste após registrar uma conta nova.', categoria: 'Hardware', operacaoId: operacao()
+        }});
+        expect(criado.status).toBe(201);
+        const meus = await fazerRota('/api/chamados/meus', { cookie: loginNovo.cookie });
+        expect(meus.dados.some((c: { id: string }) => c.id === criado.dados.id)).toBe(true);
+    });
+
+    test('solicitante técnico não acessa antes da aprovação, e técnico autorizado aprova', async () => {
+        const email = emailTeste('tecnico');
+        const cadastro = await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: {
+            nome: 'Técnico Candidato', email, senha: senhaForte, perfil: 'tecnico'
+        }});
+        expect(cadastro.status).toBe(201);
+        expect(cadastro.dados.situacao).toBe('pendente');
+        expect((await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha: 'senha-incorreta' } })).status).toBe(401);
+        const pendente = await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha: senhaForte } });
+        expect(pendente.status).toBe(403);
+        expect(pendente.cookie).toBe('');
+        const cliente = await entrar();
+        expect((await fazerRota('/api/tecnicos/solicitacoes', { cookie: cliente })).status).toBe(403);
+        const tecnico = await entrar('tecnico@helpflow.local');
+        const lista = await fazerRota('/api/tecnicos/solicitacoes', { cookie: tecnico });
+        expect(lista.status).toBe(200);
+        const pedido = lista.dados.find((p: { email: string }) => p.email === email);
+        expect(pedido).toBeTruthy();
+        expect((await fazerRota(`/api/tecnicos/solicitacoes/${pedido.id}`, { metodo: 'PATCH', cookie: cliente, corpo: { decisao: 'aprovar' } })).status).toBe(403);
+        const aprovacao = await fazerRota(`/api/tecnicos/solicitacoes/${pedido.id}`, { metodo: 'PATCH', cookie: tecnico, corpo: { decisao: 'aprovar' } });
+        expect(aprovacao.status).toBe(200);
+        expect(aprovacao.dados.situacao).toBe('ativo');
+        expect((await fazerRota(`/api/tecnicos/solicitacoes/${pedido.id}`, { metodo: 'PATCH', cookie: tecnico, corpo: { decisao: 'aprovar' } })).status).toBe(409);
+        const entrarAprovado = await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha: senhaForte } });
+        expect(entrarAprovado.status).toBe(200);
+        expect(entrarAprovado.dados.usuario.perfil).toBe('tecnico');
+        expect((await fazerRota('/api/chamados/fila', { cookie: entrarAprovado.cookie })).status).toBe(200);
+    });
+
+    test('recusa bloqueia o acesso técnico', async () => {
+        const email = emailTeste('recusa');
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: {
+            nome: 'Pedido Recusado', email, senha: senhaForte, perfil: 'tecnico'
+        }})).status).toBe(201);
+        const tecnico = await entrar('tecnico@helpflow.local');
+        const lista = await fazerRota('/api/tecnicos/solicitacoes', { cookie: tecnico });
+        const pedido = lista.dados.find((p: { email: string }) => p.email === email);
+        expect((await fazerRota(`/api/tecnicos/solicitacoes/${pedido.id}`, { metodo: 'PATCH', cookie: tecnico,
+            corpo: { decisao: 'recusar', motivo: 'Não foi possível confirmar a autorização.' }
+        })).status).toBe(200);
+        const bloqueado = await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha: senhaForte } });
+        expect(bloqueado.status).toBe(403);
+    });
+
+    test('não aceita e-mail duplicado, perfil arbitrário e senha curta', async () => {
+        const email = emailTeste('duplicado');
+        const corpo = { nome: 'Cliente Valido', email, senha: senhaForte, perfil: 'cliente' };
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo })).status).toBe(201);
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo })).status).toBe(409);
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: { ...corpo, email: emailTeste('admin'), perfil: 'admin' } })).status).toBe(400);
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: { ...corpo, email: emailTeste('fraca'), senha: '123' } })).status).toBe(400);
+    });
+});

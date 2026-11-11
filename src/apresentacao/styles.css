@@ -188,3 +188,20 @@ button.button-link:hover { text-decoration: underline; }
   .modal-heading { flex-direction: column; gap: 12px; }
   .pending-heading { flex-direction: column; align-items: stretch; }
 }
+
+/* Cadastro e aprovação de técnicos */
+.login-switch { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; font-size: .9rem; }
+.login-switch span { color: var(--muted); }
+.form-tip { margin: -5px 0 0; padding: 11px 13px; border-radius: 9px; background: #f1f7f8; color: #275e65; font-size: .85rem; line-height: 1.55; }
+.form-success { background: #e9f8ef; color: #18603a !important; border-radius: 10px; padding: 12px 14px; line-height: 1.5; }
+.approval-panel { border: 1px solid var(--line); border-radius: 13px; background: white; padding: 20px; margin: 0 0 24px; }
+.approval-heading, .approval-item { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
+.approval-heading h3 { margin: 8px 0 5px; font-size: 1.14rem; }
+.approval-heading p { color: var(--muted); margin: 0; font-size: .86rem; }
+.approval-count { background: #def1ef; border-radius: 16px; padding: 2px 9px; color: #116e74; font-size: .85rem; }
+.approval-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.approval-list { display: grid; gap: 10px; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; }
+.approval-list > p { color: var(--muted); }
+.approval-item { padding: 14px; background: #f7fafc; border: 1px solid var(--line); border-radius: 10px; }
+.approval-item > div:first-child { display: grid; gap: 4px; }
+.approval-item small { overflow-wrap: anywhere; }

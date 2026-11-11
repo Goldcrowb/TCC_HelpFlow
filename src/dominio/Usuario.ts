@@ -1,5 +1,6 @@
 import { DadoInvalidoException } from './DadoInvalidoException';
 import { PerfilUsuario } from './PerfilUsuario';
+import { SituacaoCadastro } from './SituacaoCadastro';
 
 export class Usuario {
     private readonly id: string;
@@ -7,8 +8,9 @@ export class Usuario {
     private readonly email: string;
     private readonly senha: string;
     private readonly perfil: PerfilUsuario;
+    private readonly situacao: SituacaoCadastro;
 
-    constructor(id: string, nome: string, email: string, senha: string, perfil: PerfilUsuario) {
+    constructor(id: string, nome: string, email: string, senha: string, perfil: PerfilUsuario, situacao: SituacaoCadastro = 'ativo') {
         if (!nome.trim()) {
             throw new DadoInvalidoException('O nome do usuário é obrigatório.');
         }
@@ -24,7 +26,10 @@ export class Usuario {
         this.email = email.trim().toLowerCase();
         this.senha = senha;
         this.perfil = perfil;
+        this.situacao = situacao;
     }
+
+    public getSituacao(): SituacaoCadastro { return this.situacao; }
 
     public getId(): string {
         return this.id;

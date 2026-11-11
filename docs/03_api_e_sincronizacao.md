@@ -92,3 +92,14 @@ O service worker atende apenas requisições GET de arquivos estáticos. As rota
 7. Suspender/pausar o banco por ambiente de teste e verificar a mensagem de erro sem travar a interface.
 
 O funcionamento offline depende do armazenamento anterior dos arquivos. Ele não pode ser garantido após limpar o cache, em navegação privada ou no primeiro acesso sem internet. É necessário confirmar esse comportamento em um navegador durante os testes.
+
+
+## Rotas de cadastro e aprovação (versão 2.1)
+
+| Método | Rota | Permissão | Função |
+| --- | --- | --- | --- |
+| POST | `/api/auth/cadastro` | Visitante | Cadastra cliente ativo ou solicita perfil técnico pendente. Recebe nome, email, senha e perfil. |
+| GET | `/api/tecnicos/solicitacoes` | Técnico ativo | Lista até 100 pedidos técnicos pendentes (sem retornar hash da senha). |
+| PATCH | `/api/tecnicos/solicitacoes/:id` | Técnico ativo | Decide com `{ "decisao": "aprovar" }` ou `{ "decisao": "recusar", "motivo": "..." }`. |
+
+Cadastro duplicado retorna 409; entradas inválidas retornam 400; tentativas não autorizadas retornam 401/403. Contas técnicas pendentes ou recusadas não recebem cookie de sessão. Uma solicitação já analisada retorna 409. Senha não é retornada em respostas HTTP.

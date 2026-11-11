@@ -1,0 +1,41 @@
+HELPFLOW 2.1 — ORDEM SEGURA PARA PUBLICAR
+=========================================
+
+ATENÇÃO: O SITE JÁ ESTÁ PUBLICADO. NÃO ENVIE O COMMIT ANTES DE PREPARAR O BANCO.
+
+1) SUPABASE — SQL Editor
+   Execute o conteúdo de scripts/migracao_cadastro.sql no MESMO projeto Supabase
+   que já funciona no Render. Esse SQL cria a tabela usuarios sem apagar chamados.
+
+2) RENDER — Environment
+   Além das variáveis existentes, preencha:
+      TECNICO_INICIAL_EMAIL = e-mail do primeiro técnico
+      TECNICO_INICIAL_SENHA = sua senha forte exclusiva (12+ caracteres)
+      TECNICO_INICIAL_NOME = nome do técnico (opcional)
+   NÃO inclua senhas ou chaves em arquivos do GitHub.
+   A conta de técnico inicial é criada automaticamente na primeira inicialização.
+
+3) GITHUB DESKTOP (ou Git)
+   Abra a pasta local do repositório TCC_HelpFlow, que contém a pasta oculta .git.
+   Copie TODOS os arquivos de DENTRO desta pasta TCC_HelpFlow para a raiz do
+   repositório, substituindo os arquivos antigos. NÃO apague a pasta .git.
+   O GitHub Desktop mostrará as alterações. Confira e faça o commit:
+      Adiciona cadastro de clientes e aprovação de técnicos
+   Clique em Push origin.
+
+4) RENDER — Deploy
+   Faça Deploy latest commit se não atualizar automaticamente. Se o serviço
+   estiver suspenso, use Resume Service depois da configuração.
+
+5) TESTE NO LINK PÚBLICO
+   Primeiro técnico entra com as credenciais configuradas no Render.
+   Cliente se cadastra, entra e abre chamado.
+   Outro usuário solicita perfil Técnico e aguarda.
+   Técnico autorizado aprova/recusa pedidos pelo painel.
+   Confirme persistência ao reiniciar o Render.
+
+IMPORTANTE: Contas de demonstração com senha 123456 passam a existir APENAS
+no modo local sem Supabase. Os registros antigos continuam no banco, mas
+contas novas têm IDs novos. Não transfira chamados sem conferir a titularidade.
+
+DOCUMENTAÇÃO COMPLETA: docs/11_cadastro_e_aprovacao.md

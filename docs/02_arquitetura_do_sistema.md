@@ -37,18 +37,18 @@ As regras de negócio não importam diretamente o Supabase. O contrato `Reposito
 
 **Mensagem:** `id`, `autorId`, `conteudo`, `dataEnvio`. O domínio rejeita texto vazio e horário futuro. O banco relaciona mensagens com o chamado (`chamado_id`).
 
-**Usuário:** `id`, `nome`, `email`, `senha` e `perfil`. **Limitação:** as quatro contas do ambiente acadêmico permanecem pré-cadastradas no `Map` de memória. Em um sistema real, senhas deveriam ser armazenadas com hash por usuário, e o login integrado a um provedor de identidade.
+**Usuário:** `id`, `nome`, `email`, `senha_hash`, `perfil`, `situacao` e dados de avaliação. No Supabase, contas novas são persistidas na tabela `usuarios` com `scrypt` e sal individual; `situacao` pode ser `ativo`, `pendente` ou `recusado`. O `Map` de memória é mantido apenas para demonstração local sem banco.
 
 ## 3. Estruturas de dados utilizadas
 
-- **Usuários:** `Map<string, Usuario>` para busca por e-mail em memória, estimativa de 63 usuários do documento original.
+- **Usuários:** tabela `usuarios` indexada pelo e-mail no PostgreSQL; `Map<string, Usuario>` apenas no modo de testes local.
 - **Fila:** `Array<Chamado>` ordenado por abertura; no Supabase a consulta filtra `status = 'Aberto'` e `tecnico_id IS NULL`, ordena `data_abertura ASC` e limita a 500. Índice `(status, data_abertura)`.
 - **Histórico:** `Array<Mensagem>` cronológico; Supabase busca as 50 mensagens mais recentes em ordem descendente e inverte para exibição crescente. Índice `(chamado_id, data_envio DESC)`.
 - **Atribuições:** persistência usa **controle otimista**: o cliente carrega versão `v`, modifica para `v+1`, e o SQL faz UPDATE somente `WHERE id = ? AND versao = v`. Se duas operações disputam, a segunda falha. A API devolve conflito **409**.
 
 ## 4. Autenticação e permissões
 
-O navegador não pode escolher sua identidade enviando cabeçalhos. O Express autentica `email` e `senha`, emite token HMAC-SHA256 com identificação e expiração de 8h, e envia cookie `HttpOnly; SameSite=Strict; Secure` em produção. A API valida assinatura e prazo e recupera o usuário do repositório antes de cada operação. A API limita tentativas de login; rotas de alteração checam origem. **A senha acadêmica de teste 123456 é pública** e nunca deve ser reutilizada para dados reais.
+O navegador não pode escolher sua identidade enviando cabeçalhos. O Express verifica `email` e o hash da senha, emite token HMAC-SHA256 com identificação e expiração de 8h, e envia cookie `HttpOnly; SameSite=Strict; Secure` em produção. A API valida assinatura e prazo e recupera o usuário do repositório antes de cada operação. A API limita tentativas de login; rotas de alteração checam origem. **As senhas públicas 123456 ficam restritas ao modo local sem Supabase.** Técnicos novos só entram após aprovação por técnico ativo.
 
 O frontend não contém credenciais do Supabase. Apenas o servidor conhece `SUPABASE_SERVICE_ROLE_KEY`; as tabelas têm RLS habilitada e não concedem acesso a `anon` ou `authenticated`. Esta separação é essencial porque a service_role bypassa RLS e deve permanecer secreta.
 
@@ -82,3 +82,12 @@ Dois princípios SOLID aparecem de forma mais evidente:
 - **DIP (inversão de dependência):** `ChamadoService` recebe a interface `RepositorioChamado` no construtor. Por isso, a implementação de persistência pode ser em memória ou no Supabase sem alterar o serviço.
 
 A troca de implementações também favorece **OCP** e **LSP**, desde que ambas respeitem o mesmo contrato. Já o **ISP** foi aplicado de maneira parcial: há interfaces distintas para usuários e chamados, mas `RepositorioChamado` ainda reúne várias operações. Para uma evolução do projeto, essas interfaces poderiam ser revisadas conforme as necessidades reais.
+
+
+## 9. Cadastro e aprovação de técnicos (versão 2.1)
+
+`CadastroService` valida o cadastro e determina a situação inicial. Para perfil cliente, a situação é `ativo`; para técnico, `pendente`. `RepositorioUsuario` define as operações de cadastro, consulta de solicitações e decisão, com implementações em memória (testes) e em Supabase (publicação). O cadastro técnico pendente não recebe sessão autenticada.
+
+Uma sessão ativa do perfil técnico pode consultar as solicitações e aprovar ou recusar outra conta técnica. A API valida o perfil no servidor, impede a autoaprovação e faz a alteração com condição `situacao = pendente`, recusando uma segunda decisão. O campo `avaliado_por` registra o técnico responsável. O técnico inicial é provisionado pelas variáveis do servidor no primeiro início, sem credenciais fixas públicas.
+
+Essa evolução preserva a arquitetura em camadas e acrescenta um caso de uso próprio para cadastro, separado de `ChamadoService`.

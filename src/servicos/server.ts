@@ -3,13 +3,16 @@ import path from 'node:path';
 import fs from 'node:fs';
 import express, { NextFunction, Request, Response } from 'express';
 import { AutenticacaoService } from '../aplicacao/AutenticacaoService';
+import { CadastroService } from '../aplicacao/CadastroService';
+import { criarHashSenha } from '../aplicacao/Senhas';
 import { ChamadoService } from '../aplicacao/ChamadoService';
 import { CategoriaChamado } from '../dominio/CategoriaChamado';
 import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
 import { StatusChamado } from '../dominio/StatusChamado';
 import { Usuario } from '../dominio/Usuario';
-import { RepositorioUsuarioMemoria } from '../persistencia/RepositorioUsuarioMemoria';
+import { criarRepositorioUsuario } from '../persistencia/indice';
+import { PerfilUsuario as Perfil } from '../dominio/PerfilUsuario';
 import { criarRepositorioChamado } from '../persistencia/indice';
 
 // Aplicação demonstrativa: contas cadastradas previamente; os chamados e as mensagens
@@ -23,7 +26,8 @@ const cookieNome = 'helpflow_sessao';
 const validadeSessaoMs = 8 * 60 * 60 * 1000;
 const PORT = Number(process.env.PORT ?? 3000);
 const app = express();
-const repositorioUsuario = new RepositorioUsuarioMemoria();
+const repositorioUsuario = criarRepositorioUsuario();
+const cadastroService = new CadastroService(repositorioUsuario);
 const autenticacaoService = new AutenticacaoService(repositorioUsuario);
 const chamadoService = new ChamadoService(criarRepositorioChamado());
 
@@ -87,7 +91,7 @@ async function exigirUsuario(req: Request): Promise<Usuario> {
     const dados = token ? validarToken(token) : null;
     if (!dados) throw new ErroHttp(401, 'Faça login para continuar.');
     const usuario = await repositorioUsuario.buscarPorEmail(dados.email);
-    if (!usuario || usuario.getId() !== dados.id) throw new ErroHttp(401, 'Sessão inválida. Faça login novamente.');
+    if (!usuario || usuario.getId() !== dados.id || usuario.getSituacao() !== 'ativo') throw new ErroHttp(401, 'Sessão inválida. Faça login novamente.');
     return usuario;
 }
 
@@ -111,13 +115,53 @@ function limitarLogin(req: Request): void {
     if (atual.contador > 30) throw new ErroHttp(429, 'Muitas tentativas de acesso. Tente novamente mais tarde.');
 }
 
-app.get('/api/saude', (_req, res) => res.json({ status: 'ok', projeto: 'HelpFlow', versao: '2.0.0' }));
+app.get('/api/saude', (_req, res) => res.json({ status: 'ok', projeto: 'HelpFlow', versao: '2.1.0' }));
+
+// Cadastro público: cliente entra imediatamente; técnico aguarda análise.
+const tentativasCadastro = new Map<string, { inicio: number; contador: number }>();
+app.post('/api/auth/cadastro', async (req, res, next) => {
+    try {
+        const ip = req.ip || 'desconhecido';
+        const agora = Date.now();
+        if (tentativasCadastro.size > 1000) tentativasCadastro.clear();
+        const anterior = tentativasCadastro.get(ip);
+        const atual = !anterior || agora - anterior.inicio > 60 * 60_000
+            ? { inicio: agora, contador: 0 } : anterior;
+        atual.contador++;
+        tentativasCadastro.set(ip, atual);
+        if (atual.contador > 10) throw new ErroHttp(429, 'Muitos cadastros neste período. Tente mais tarde.');
+        const perfil = req.body?.perfil;
+        const resultado = await cadastroService.cadastrar({
+            nome: String(req.body?.nome ?? ''), email: String(req.body?.email ?? ''),
+            senha: String(req.body?.senha ?? ''), perfil: typeof perfil === 'string' ? perfil : ''
+        });
+        return res.status(201).json(resultado);
+    } catch (erro) { return next(erro); }
+});
+
+app.get('/api/tecnicos/solicitacoes', async (req, res, next) => {
+    try { return res.json(await cadastroService.listarSolicitacoes(await exigirUsuario(req))); }
+    catch (erro) { return next(erro); }
+});
+
+app.patch('/api/tecnicos/solicitacoes/:id', async (req, res, next) => {
+    try {
+        const decisao = req.body?.decisao;
+        if (decisao !== 'aprovar' && decisao !== 'recusar') throw new ErroHttp(400, 'Decisão inválida.');
+        return res.json(await cadastroService.decidir(
+            await exigirUsuario(req), String(req.params.id), decisao,
+            typeof req.body?.motivo === 'string' ? req.body.motivo : undefined
+        ));
+    } catch (erro) { return next(erro); }
+});
 
 app.post('/api/auth/login', async (req, res, next) => {
     try {
         limitarLogin(req);
         const usuario = await autenticacaoService.autenticar(String(req.body?.email ?? ''), String(req.body?.senha ?? ''));
         if (!usuario) throw new ErroHttp(401, 'E-mail ou senha inválidos.');
+        if (usuario.getSituacao() === 'pendente') throw new ErroHttp(403, 'Seu cadastro como técnico está aguardando aprovação.');
+        if (usuario.getSituacao() === 'recusado') throw new ErroHttp(403, 'Sua solicitação para técnico foi recusada. Entre em contato com o suporte.');
         res.cookie(cookieNome, emitirToken(usuario), {
             httpOnly: true, secure: producao, sameSite: 'strict', maxAge: validadeSessaoMs, path: '/'
         });
@@ -224,19 +268,50 @@ app.use((erro: unknown, _req: Request, res: Response, _next: NextFunction) => {
     }
     if (erro instanceof DadoInvalidoException) {
         const mensagem = erro.message;
-        const status = /já foi (modificado|alterado|atribuído)|outro técnico/i.test(mensagem) ? 409
-            : /sem permissão|assuma o chamado|apenas usuários técnicos/i.test(mensagem) ? 403
-            : /não encontrado/i.test(mensagem) ? 404 : 400;
+        const status = /já foi (modificado|alterado|atribuído)|outro técnico|já analisada/i.test(mensagem) ? 409
+            : /sem permissão|assuma o chamado|apenas usuários técnicos|apenas técnicos aprovados/i.test(mensagem) ? 403
+            : /não encontrado/i.test(mensagem) ? 404
+            : /e-mail já está cadastrado/i.test(mensagem) ? 409 : 400;
         return res.status(status).json({ erro: mensagem });
     }
     console.error('Erro interno na API:', erro);
     return res.status(500).json({ erro: 'Erro interno. Tente novamente ou consulte o responsável pela demonstração.' });
 });
 
+async function configurarTecnicoInicial(): Promise<void> {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return;
+    const email = (process.env.TECNICO_INICIAL_EMAIL || '').trim().toLowerCase();
+    const senha = process.env.TECNICO_INICIAL_SENHA || '';
+    if (!email || !senha) {
+        console.warn('ATENÇÃO: configure TECNICO_INICIAL_EMAIL e TECNICO_INICIAL_SENHA para cadastrar o primeiro técnico aprovado.');
+        return;
+    }
+    if (senha.length < 12) throw new Error('TECNICO_INICIAL_SENHA precisa ter pelo menos 12 caracteres.');
+    const existente = await repositorioUsuario.buscarPorEmail(email);
+    if (existente) {
+        if (existente.getPerfil() !== Perfil.TECNICO || existente.getSituacao() !== 'ativo') {
+            throw new Error('TECNICO_INICIAL_EMAIL já pertence a uma conta sem permissão de técnico. Escolha outro e-mail.');
+        }
+        return;
+    }
+    // Identificador compatível com chamados antigos do técnico de demonstração.
+    const nome = process.env.TECNICO_INICIAL_NOME?.trim() || 'Responsável pelo suporte';
+    await repositorioUsuario.cadastrar(new Usuario('TEC-01', nome, email, await criarHashSenha(senha), Perfil.TECNICO));
+    console.log('Primeiro técnico autorizado criado no banco.');
+}
+
 if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`HelpFlow iniciado na porta ${PORT}`);
-        console.log(process.env.SUPABASE_URL ? 'Persistência: Supabase' : 'Persistência: memória (não persistente)');
-    });
+    void (async () => {
+        try {
+            await configurarTecnicoInicial();
+            app.listen(PORT, '0.0.0.0', () => {
+                console.log(`HelpFlow iniciado na porta ${PORT}`);
+                console.log(process.env.SUPABASE_URL ? 'Persistência: Supabase' : 'Persistência: memória (não persistente)');
+            });
+        } catch (erro) {
+            console.error('Falha ao preparar o cadastro de técnicos:', erro);
+            process.exitCode = 1;
+        }
+    })();
 }
 export { app };

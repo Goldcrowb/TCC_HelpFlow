@@ -39,3 +39,12 @@ Esta lista reúne as verificações que ainda precisam ser realizadas no ambient
 __________________________________________________
 
 > Esta lista é um controle de atividades. A aprovação dos critérios deve ser registrada com resultados, datas e evidências obtidas durante a execução dos testes.
+
+
+## Após a atualização para versão 2.1
+
+- Executar `scripts/migracao_cadastro.sql` no Supabase antes do novo deploy.
+- Configurar as variáveis do primeiro técnico no Render, sem guardar credenciais no repositório.
+- Testar no endereço público: cadastro de cliente, login, novo chamado, solicitação de técnico, aprovação, recusa e reinício do serviço preservando contas.
+- Confirmar que os chamados antigos ainda estão no banco e decidir se há necessidade de migrar vínculos a contas novas.
+- Revisar alertas de segurança do `npm audit` e planejar confirmação de e-mail, recuperação de senha e medidas anti-spam caso o site vá além da demonstração.

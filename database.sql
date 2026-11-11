@@ -32,3 +32,21 @@ alter table public.chamados enable row level security;
 alter table public.mensagens enable row level security;
 revoke all on table public.chamados from anon, authenticated;
 revoke all on table public.mensagens from anon, authenticated;
+
+-- Cadastro de usuários (migração aditiva: preserva os chamados já existentes).
+-- Executar novamente o arquivo completo é seguro com as tabelas já criadas.
+create table if not exists public.usuarios (
+    id text primary key,
+    nome varchar(100) not null,
+    email varchar(254) not null unique,
+    senha_hash text not null,
+    perfil varchar(16) not null check (perfil in ('cliente', 'tecnico')),
+    situacao varchar(16) not null check (situacao in ('ativo', 'pendente', 'recusado')),
+    criado_em timestamptz not null default now(),
+    avaliado_por text,
+    avaliado_em timestamptz,
+    motivo_recusa varchar(500)
+);
+create index if not exists idx_usuarios_fila on public.usuarios(perfil, situacao, criado_em);
+alter table public.usuarios enable row level security;
+revoke all on table public.usuarios from anon, authenticated;

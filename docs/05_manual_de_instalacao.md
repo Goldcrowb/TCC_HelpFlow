@@ -1,5 +1,7 @@
 # 05 — Manual de instalação e uso
 
+**Para atualizar uma instalação que já está no Render, siga primeiro [11_cadastro_e_aprovacao.md](11_cadastro_e_aprovacao.md): SQL de migração → variáveis do primeiro técnico → commit/deploy.**
+
 Este manual descreve a execução no computador, a configuração do PostgreSQL no Supabase e a publicação no Render. Recomenda-se testar cada etapa antes de passar à seguinte.
 
 ## 1. Execução local
@@ -20,7 +22,7 @@ Este manual descreve a execução no computador, a configuração do PostgreSQL 
 
 1. Acesse **https://supabase.com/**, crie uma conta e um projeto Free.
 2. Defina uma senha forte para o banco e guarde em gerenciador de senhas. Aguarde o banco ficar ativo.
-3. Abra o **SQL Editor** do projeto e execute o arquivo `database.sql`. Ele cria `chamados`, `mensagens`, índices e habilita RLS sem acesso público.
+3. Abra o **SQL Editor** do projeto e execute o arquivo `database.sql`. Ele cria `chamados`, `mensagens`, `usuarios`, índices e habilita RLS sem acesso público. Para banco existente, basta rodar `scripts/migracao_cadastro.sql` antes de publicar a versão 2.1.
 4. Em **Project Settings / API** (a nomenclatura pode mudar), copie o **Project URL** e a **service_role key** ou a chave secreta com permissões equivalentes, conforme a interface do seu projeto. **O código está configurado para a service_role key.** Não copie a chave anônima no lugar dela.
 5. Configure no backend as variáveis `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY`. Para testar localmente, crie um arquivo `.env` baseado em `.env.example`. **A aplicação Node não carrega `.env` automaticamente**: use variáveis exportadas pelo terminal, um gerenciador de processos ou `node --env-file=.env` para executar o backend compilado. No Render, o painel injeta as variáveis automaticamente.
 6. Confirme que `SUPABASE_SERVICE_ROLE_KEY` **nunca** está dentro de `src/apresentacao`, `VITE_*`, HTML, README com valor real, commit ou ZIP entregue.

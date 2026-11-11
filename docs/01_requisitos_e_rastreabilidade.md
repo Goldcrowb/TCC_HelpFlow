@@ -57,4 +57,14 @@ Desenvolver um sistema web de atendimento com dois perfis: **cliente** (abre e a
 
 ## 6. Funcionalidades fora do escopo
 
-O escopo aprovado não contempla triagem automática por inteligência artificial, chat em tempo real nem notificações por e-mail ou WhatsApp. O login com usuários de demonstração atende aos testes acadêmicos, mas precisaria ser substituído para uso em uma organização.
+O escopo aprovado não contempla triagem automática por inteligência artificial, chat em tempo real nem notificações por e-mail ou WhatsApp. O cadastro e a aprovação de técnicos foram acrescentados à versão 2.1; recursos como recuperação de senha e confirmação de e-mail ainda não foram implementados.
+
+
+## Requisitos acrescentados na versão 2.1
+
+- **RF-010:** visitante cadastra cliente com nome, e-mail e senha; conta fica ativa. Implementação: `CadastroService`, rota `POST /api/auth/cadastro` e tela de cadastro.
+- **RF-011:** visitante solicita perfil técnico; conta fica pendente, sem acesso à fila. Implementação: `CadastroService` e bloqueio em `/api/auth/login`.
+- **RF-012:** técnico ativo consulta, aprova ou recusa inscrições técnicas; solicitações já decididas não podem ser reavaliadas. Implementação: `GET/PATCH /api/tecnicos/solicitacoes` e painel técnico.
+- **RNF-010:** usuários persistem no Supabase e senhas são guardadas com hash salgado. Implementação: `RepositorioUsuarioSupabase`, `Senhas.ts` e tabela `usuarios`.
+
+Evidências: testes de API em `src/servicos/server.test.ts` e testes de domínio/serviço em `src/aplicacao/CadastroService.test.ts`. A validação em banco real continua pendente.

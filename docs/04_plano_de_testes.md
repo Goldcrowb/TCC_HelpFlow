@@ -69,3 +69,10 @@ Os resultados acima são de testes locais, principalmente com o repositório em 
 ## 6. Registro dos testes em ambiente online
 
 Preencher depois da implantação: URL pública, commit, data/hora, nome do avaliador externo, capturas de tela sem segredos, tempos medidos, erros encontrados e correções. A publicação e os testes em uma hospedagem pública ainda não foram realizados nesta etapa.
+
+
+## Novos testes — cadastro e aprovação (versão 2.1)
+
+Foram acrescentados 6 testes automatizados, totalizando **32 testes locais aprovados**: cadastro e abertura de chamado por cliente, bloqueio de técnico pendente, aprovação por técnico autorizado, recusa, e-mail duplicado, perfil inválido, senha curta e verificação de hash `scrypt`. O teste do fluxo de aprovação também confirma que uma segunda decisão falha com HTTP 409.
+
+**Ainda não executado:** teste ponta a ponta com Supabase real e cadastro no Render, teste externo de interface em celular e auditoria de segurança. Os testes locais usam repositório em memória e não comprovam a configuração de RLS no ambiente publicado.

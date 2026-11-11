@@ -73,3 +73,19 @@ export async function adicionarMensagem(_usuario: UsuarioSessao, id: string, con
         method: 'POST', body: JSON.stringify({ conteudo, operacaoId })
     });
 }
+
+export type PerfilCadastro = 'cliente' | 'tecnico';
+export interface SolicitacaoTecnico { id: string; nome: string; email: string; criadoEm: string }
+export async function cadastrarUsuario(nome: string, email: string, senha: string, perfil: PerfilCadastro) {
+    return requisicao<{ perfil: PerfilCadastro; situacao: 'ativo' | 'pendente' }>('/api/auth/cadastro', {
+        method: 'POST', body: JSON.stringify({ nome, email, senha, perfil })
+    });
+}
+export async function listarSolicitacoesTecnicos(): Promise<SolicitacaoTecnico[]> {
+    return requisicao<SolicitacaoTecnico[]>('/api/tecnicos/solicitacoes');
+}
+export async function decidirSolicitacaoTecnico(id: string, decisao: 'aprovar' | 'recusar', motivo?: string) {
+    return requisicao<{ situacao: string }>(`/api/tecnicos/solicitacoes/${encodeURIComponent(id)}`, {
+        method: 'PATCH', body: JSON.stringify({ decisao, motivo })
+    });
+}

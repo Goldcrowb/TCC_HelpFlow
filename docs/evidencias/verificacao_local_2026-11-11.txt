@@ -1,0 +1,25 @@
+HelpFlow 2.1 — registros de verificação local — 11/11/2026
+
+Código baseado na versão enviada do HelpFlow e nos arquivos atuais do GitHub.
+
+Executado em Node.js v22 com dependências recuperadas do pacote anterior fornecido pelo usuário.
+
+Teste: node node_modules/vitest/vitest.mjs run
+Resultado: 7 arquivos de testes, 32 testes passaram.
+
+Checagem do servidor: node node_modules/typescript/bin/tsc -p tsconfig.server.json
+Resultado: compilação concluída sem erros.
+
+Checagem da API/filas front-end: node node_modules/typescript/bin/tsc -p tsconfig.client.json --noEmit
+Resultado: sem erros.
+
+Interface: node node_modules/vite/bin/vite.js build
+Resultado: dist/web compilada sem erros.
+
+Verificação HTTP: node scripts/verificar_build.mjs
+Resultado: GET /api/saude HTTP 200; GET / HTTP 200, página React presente.
+
+Observações: testes de cadastro foram realizados com repositório em memória.
+Não foi possível acessar as credenciais reais da conta Supabase/Render para
+validar a migração SQL e as novas rotas no endereço público.
+Não consta comprovação de carga CA-03 ou instalação independente CA-06.
