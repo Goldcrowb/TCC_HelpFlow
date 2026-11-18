@@ -229,6 +229,7 @@ function FormularioChamado({ usuario, onError, onChanged }: { usuario: UsuarioSe
 
 function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSessao; onError: (msg: string) => void; atualizacao: number }) {
     const [fila, setFila] = useState<ChamadoView[]>([]), [atendimentos, setAtendimentos] = useState<ChamadoView[]>([]), [aba, setAba] = useState<'fila' | 'meus'>('fila');
+    const [filtroStatus, setFiltroStatus] = useState<'abertos' | 'resolvidos' | 'todos'>('abertos');
     const [selecionado, setSelecionado] = useState<string | null>(null), [pesquisa, setPesquisa] = useState(''), [carregando, setCarregando] = useState(true), [ocupado, setOcupado] = useState('');
     const carregar = useCallback(async () => {
         try {
@@ -250,6 +251,7 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
         try {
             const chamado = await atribuirChamado(usuario, id);
             await carregar();
+            setFiltroStatus('abertos');
             setAba('meus');
             if (abrirDetalhes) setSelecionado(id);
             return chamado;
@@ -262,13 +264,26 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
             setOcupado('');
         }
     }
+    const totalAbertos = atendimentos.filter((c) => c.status === 'Aberto' || c.status === 'Em Andamento').length;
+    const totalResolvidos = atendimentos.filter((c) => c.status === 'Resolvido').length;
     const lista = aba === 'fila' ? fila : atendimentos;
-    const filtrados = lista.filter((c) => `${c.titulo} ${c.descricao} ${c.categoria}`.toLowerCase().includes(pesquisa.toLowerCase()));
+    const filtrados = lista.filter((c) => {
+        const correspondeStatus = aba === 'fila' || filtroStatus === 'todos' ||
+            (filtroStatus === 'abertos' && (c.status === 'Aberto' || c.status === 'Em Andamento')) ||
+            (filtroStatus === 'resolvidos' && c.status === 'Resolvido');
+        const correspondePesquisa = `${c.titulo} ${c.descricao} ${c.categoria}`.toLowerCase().includes(pesquisa.toLowerCase());
+        return correspondeStatus && correspondePesquisa;
+    });
     return <><div className="section-heading"><div><span className="eyebrow dark">VISÃO DO SUPORTE</span><h2>Gerenciar atendimentos</h2><p>Organize os chamados e acompanhe cada atendimento.</p></div><button className="button-outline" onClick={() => void carregar()}>↻ Atualizar</button></div>
         <div className="stats"><IndicadorResumo label="Na fila" valor={fila.length} icon="▤"/><IndicadorResumo label="Meus atendimentos" valor={atendimentos.length} icon="◷"/><IndicadorResumo label="Resolvidos por mim" valor={atendimentos.filter((c) => c.status === 'Resolvido').length} icon="✓"/></div>
         <PainelSolicitacoesTecnicos onError={onError} />
         <div className="toolbar"><div className="filter-tabs"><button className={aba === 'fila' ? 'active' : ''} onClick={() => setAba('fila')}>Fila geral <span>{fila.length}</span></button><button className={aba === 'meus' ? 'active' : ''} onClick={() => setAba('meus')}>Meus atendimentos <span>{atendimentos.length}</span></button></div><input className="search" aria-label="Pesquisar chamados" value={pesquisa} onChange={(e) => setPesquisa(e.target.value)} placeholder="Pesquisar chamados..." /></div>
-        <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando atendimentos..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo={aba === 'fila' ? 'Fila vazia' : 'Nenhum atendimento encontrado'} texto={aba === 'fila' ? 'Não há chamados aguardando atendimento.' : 'Assuma um chamado na fila geral para começar.'} /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} onAssumir={aba === 'fila' ? () => void assumir(c.id) : undefined} ocupado={!!ocupado} />)}</div>
+        {aba === 'meus' && <div className="toolbar"><div className="filter-tabs" role="group" aria-label="Filtrar meus atendimentos por situação">
+            <button type="button" className={filtroStatus === 'abertos' ? 'active' : ''} aria-pressed={filtroStatus === 'abertos'} onClick={() => setFiltroStatus('abertos')}>Em aberto <span>{totalAbertos}</span></button>
+            <button type="button" className={filtroStatus === 'resolvidos' ? 'active' : ''} aria-pressed={filtroStatus === 'resolvidos'} onClick={() => setFiltroStatus('resolvidos')}>Resolvidos <span>{totalResolvidos}</span></button>
+            <button type="button" className={filtroStatus === 'todos' ? 'active' : ''} aria-pressed={filtroStatus === 'todos'} onClick={() => setFiltroStatus('todos')}>Todos <span>{atendimentos.length}</span></button>
+        </div></div>}
+        <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando atendimentos..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo={aba === 'fila' ? 'Fila vazia' : 'Nenhum atendimento encontrado'} texto={pesquisa.trim() ? 'Nenhum chamado corresponde à pesquisa.' : aba === 'fila' ? 'Não há chamados aguardando atendimento.' : filtroStatus === 'abertos' ? 'Não há chamados em aberto ou em andamento.' : filtroStatus === 'resolvidos' ? 'Você ainda não tem chamados resolvidos.' : 'Assuma um chamado na fila geral para começar.'} /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} onAssumir={aba === 'fila' ? () => void assumir(c.id) : undefined} ocupado={!!ocupado} />)}</div>
         {selecionado && <Detalhes key={selecionado} usuario={usuario} id={selecionado} onClose={() => setSelecionado(null)} onError={onError} onChanged={carregar} onAssumir={() => assumir(selecionado, false)} ocupado={!!ocupado} />}
     </>;
 }
