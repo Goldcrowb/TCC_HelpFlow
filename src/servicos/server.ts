@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import express, { NextFunction, Request, Response } from 'express';
 import { AutenticacaoService } from '../aplicacao/AutenticacaoService';
 import { CadastroService } from '../aplicacao/CadastroService';
+import { GerenciamentoUsuarioService } from '../aplicacao/GerenciamentoUsuarioService';
+import { ehTecnicoInicial, ID_TECNICO_INICIAL } from '../dominio/TecnicoInicial';
 import { criarHashSenha } from '../aplicacao/Senhas';
 import { ChamadoService } from '../aplicacao/ChamadoService';
 import { CategoriaChamado } from '../dominio/CategoriaChamado';
@@ -29,7 +31,9 @@ const app = express();
 const repositorioUsuario = criarRepositorioUsuario();
 const cadastroService = new CadastroService(repositorioUsuario);
 const autenticacaoService = new AutenticacaoService(repositorioUsuario);
-const chamadoService = new ChamadoService(criarRepositorioChamado(), repositorioUsuario);
+const repositorioChamado = criarRepositorioChamado();
+const chamadoService = new ChamadoService(repositorioChamado, repositorioUsuario);
+const gerenciamentoUsuarioService = new GerenciamentoUsuarioService(repositorioUsuario, repositorioChamado);
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -96,7 +100,7 @@ async function exigirUsuario(req: Request): Promise<Usuario> {
 }
 
 function resumoUsuario(usuario: Usuario) {
-    return { id: usuario.getId(), nome: usuario.getNome(), email: usuario.getEmail(), perfil: usuario.getPerfil() };
+    return { id: usuario.getId(), nome: usuario.getNome(), email: usuario.getEmail(), perfil: usuario.getPerfil(), podeGerenciarUsuarios: ehTecnicoInicial(usuario) };
 }
 
 class ErroHttp extends Error {
@@ -137,6 +141,16 @@ app.post('/api/auth/cadastro', async (req, res, next) => {
         });
         return res.status(201).json(resultado);
     } catch (erro) { return next(erro); }
+});
+
+app.get('/api/usuarios', async (req, res, next) => {
+    try { res.json(await gerenciamentoUsuarioService.listar(await exigirUsuario(req))); }
+    catch (erro) { next(erro); }
+});
+
+app.delete('/api/usuarios/:id', async (req, res, next) => {
+    try { res.json(await gerenciamentoUsuarioService.excluir(await exigirUsuario(req), String(req.params.id))); }
+    catch (erro) { next(erro); }
 });
 
 app.get('/api/tecnicos/ativos', async (req, res, next) => {
@@ -311,7 +325,7 @@ async function configurarTecnicoInicial(): Promise<void> {
     }
     // Identificador compatível com chamados antigos do técnico de demonstração.
     const nome = process.env.TECNICO_INICIAL_NOME?.trim() || 'Responsável pelo suporte';
-    await repositorioUsuario.cadastrar(new Usuario('TEC-01', nome, email, await criarHashSenha(senha), Perfil.TECNICO));
+    await repositorioUsuario.cadastrar(new Usuario(ID_TECNICO_INICIAL, nome, email, await criarHashSenha(senha), Perfil.TECNICO));
     console.log('Primeiro técnico autorizado criado no banco.');
 }
 

@@ -1,11 +1,13 @@
-import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import type { Server } from 'node:http';
 import { app } from './server';
 
 let servidor: Server;
 let url = '';
+let ipTeste = 0;
+beforeEach(() => { ipTeste++; });
 const operacao = () => crypto.randomUUID();
-type Metodos = 'GET' | 'POST' | 'PATCH';
+type Metodos = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 async function fazerRota(rota: string, { metodo = 'GET', cookie, corpo, headers = {} }: {
     metodo?: Metodos; cookie?: string; corpo?: unknown; headers?: Record<string, string>
@@ -13,6 +15,7 @@ async function fazerRota(rota: string, { metodo = 'GET', cookie, corpo, headers 
     const res = await fetch(`${url}${rota}`, {
         method: metodo,
         headers: {
+            'X-Forwarded-For': `192.0.2.${ipTeste}`,
             ...(cookie ? { cookie } : {}),
             ...(corpo ? { 'Content-Type': 'application/json' } : {}),
             ...headers
@@ -283,5 +286,64 @@ describe('Transferência de chamados', () => {
         const resolvido = await fazerRota(`/api/chamados/${id}/status`, { metodo: 'PATCH', cookie: tecnico2, corpo: { status: 'Resolvido' } });
         expect(resolvido.status).toBe(200);
         expect((await tentar(tecnico2, 'TEC-01', resolvido.dados.versao)).status).toBe(400);
+    });
+});
+
+describe('Gerenciamento de usuários pelo primeiro técnico', () => {
+    test('somente o técnico inicial lista e exclui contas, sem expor hashes', async () => {
+        const admin = await entrar('tecnico@helpflow.local');
+        const tecnico = await entrar('tecnico2@helpflow.local');
+        const cliente = await entrar();
+        expect((await fazerRota('/api/auth/session', { cookie: admin })).dados.usuario.podeGerenciarUsuarios).toBe(true);
+        expect((await fazerRota('/api/auth/session', { cookie: tecnico })).dados.usuario.podeGerenciarUsuarios).toBe(false);
+        expect((await fazerRota('/api/usuarios')).status).toBe(401);
+        for (const cookie of [tecnico, cliente]) {
+            expect((await fazerRota('/api/usuarios', { cookie })).status).toBe(403);
+            expect((await fazerRota('/api/usuarios/CLI-02', { metodo: 'DELETE', cookie })).status).toBe(403);
+        }
+        const lista = await fazerRota('/api/usuarios', { cookie: admin });
+        expect(lista.status).toBe(200);
+        expect(lista.dados.some((u: { id: string }) => u.id === 'CLI-02')).toBe(true);
+        expect(lista.dados.every((u: object) => Object.keys(u).sort().join(',') === 'email,id,nome,perfil,situacao')).toBe(true);
+        expect((await fazerRota('/api/usuarios/TEC-01', { metodo: 'DELETE', cookie: admin })).status).toBe(400);
+        expect((await fazerRota('/api/usuarios/inexistente', { metodo: 'DELETE', cookie: admin })).status).toBe(404);
+    });
+    test('exclusão de cliente invalida a sessão e mantém o chamado e as mensagens', async () => {
+        const admin = await entrar('tecnico@helpflow.local');
+        const cliente = await entrar('cliente2@helpflow.local');
+        const chamado = await fazerRota('/api/chamados', { metodo: 'POST', cookie: cliente, corpo: {
+            titulo: 'Teste de exclusão', descricao: 'Preservar histórico de atendimento.', categoria: 'Rede', operacaoId: operacao()
+        }});
+        expect(chamado.status).toBe(201);
+        const id = chamado.dados.id;
+        expect((await fazerRota(`/api/chamados/${id}/mensagens`, { metodo: 'POST', cookie: cliente, corpo: { conteudo: 'Histórico preservado após exclusão.' } })).status).toBe(201);
+        expect((await fazerRota('/api/usuarios/CLI-02', { metodo: 'DELETE', cookie: admin })).status).toBe(200);
+        expect((await fazerRota('/api/auth/session', { cookie: cliente })).status).toBe(401);
+        expect((await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email: 'cliente2@helpflow.local', senha: '123456' } })).status).toBe(401);
+        const detalhes = await fazerRota(`/api/chamados/${id}`, { cookie: admin });
+        expect(detalhes.status).toBe(200);
+        expect(detalhes.dados.mensagens[0].conteudo).toBe('Histórico preservado após exclusão.');
+    });
+    test('técnico com chamados ativos não pode ser excluído; após transferir, pode', async () => {
+        const admin = await entrar('tecnico@helpflow.local');
+        const cliente = await entrar();
+        const email = 'exclusao-tecnico@exemplo.com';
+        const senha = 'senha-exemplo-1234';
+        expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: { nome: 'Técnico Temporário', email, senha, perfil: 'tecnico' } })).status).toBe(201);
+        const pedidos = await fazerRota('/api/tecnicos/solicitacoes', { cookie: admin });
+        const tecnicoId = pedidos.dados.find((u: { email: string }) => u.email === email).id;
+        expect((await fazerRota(`/api/tecnicos/solicitacoes/${tecnicoId}`, { metodo: 'PATCH', cookie: admin, corpo: { decisao: 'aprovar' } })).status).toBe(200);
+        const login = await fazerRota('/api/auth/login', { metodo: 'POST', corpo: { email, senha } });
+        expect(login.status).toBe(200);
+        const chamado = await fazerRota('/api/chamados', { metodo: 'POST', cookie: cliente, corpo: { titulo: 'Chamado temporário', descricao: 'Teste de transferência antes da exclusão.', categoria: 'Rede', operacaoId: operacao() } });
+        expect(chamado.status).toBe(201);
+        const id = chamado.dados.id;
+        const atribuido = await fazerRota(`/api/chamados/${id}/atribuir`, { metodo: 'POST', cookie: login.cookie });
+        expect(atribuido.status).toBe(200);
+        expect((await fazerRota(`/api/usuarios/${tecnicoId}`, { metodo: 'DELETE', cookie: admin })).status).toBe(400);
+        expect((await fazerRota(`/api/chamados/${id}/transferir`, { metodo: 'PATCH', cookie: login.cookie, corpo: { tecnicoId: 'TEC-01', versao: atribuido.dados.versao } })).status).toBe(200);
+        expect((await fazerRota(`/api/usuarios/${tecnicoId}`, { metodo: 'DELETE', cookie: admin })).status).toBe(200);
+        expect((await fazerRota('/api/auth/session', { cookie: login.cookie })).status).toBe(401);
+        expect((await fazerRota(`/api/chamados/${id}`, { cookie: admin })).dados.chamado.tecnicoResponsavelId).toBe('TEC-01');
     });
 });

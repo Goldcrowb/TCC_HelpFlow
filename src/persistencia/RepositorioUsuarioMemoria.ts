@@ -1,6 +1,7 @@
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
-import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo } from '../dominio/RepositorioUsuario';
+import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo, UsuarioGerenciado, ResultadoExclusao } from '../dominio/RepositorioUsuario';
 import { Usuario } from '../dominio/Usuario';
+import { ID_TECNICO_INICIAL } from '../dominio/TecnicoInicial';
 import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 
 // Repositório local para testes e execução sem Supabase. Não serve para contas reais.
@@ -17,6 +18,20 @@ export class RepositorioUsuarioMemoria implements RepositorioUsuario {
 
     private inserirDemo(usuario: Usuario) { this.usuarios.set(usuario.getEmail(), usuario); this.datas.set(usuario.getId(), new Date().toISOString()); }
     async buscarPorEmail(email: string): Promise<Usuario | null> { return this.usuarios.get(email.trim().toLowerCase()) ?? null; }
+    async listarUsuarios(): Promise<UsuarioGerenciado[]> {
+        return [...this.usuarios.values()].map(u => ({
+            id: u.getId(), nome: u.getNome(), email: u.getEmail(),
+            perfil: u.getPerfil(), situacao: u.getSituacao()
+        })).sort((a, b) => a.nome.localeCompare(b.nome));
+    }
+    async excluirUsuario(id: string): Promise<ResultadoExclusao> {
+        if (id === ID_TECNICO_INICIAL) return 'protegido';
+        const usuario = [...this.usuarios.values()].find(u => u.getId() === id);
+        if (!usuario) return 'ausente';
+        this.usuarios.delete(usuario.getEmail());
+        this.datas.delete(id);
+        return 'excluido';
+    }
     async listarTecnicosAtivos(): Promise<TecnicoAtivo[]> {
         return [...this.usuarios.values()]
             .filter(u => u.getPerfil() === PerfilUsuario.TECNICO && u.getSituacao() === 'ativo')

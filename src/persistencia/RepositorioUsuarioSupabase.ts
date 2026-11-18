@@ -1,9 +1,10 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
-import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo } from '../dominio/RepositorioUsuario';
+import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo, UsuarioGerenciado, ResultadoExclusao } from '../dominio/RepositorioUsuario';
 import { SituacaoCadastro } from '../dominio/SituacaoCadastro';
 import { Usuario } from '../dominio/Usuario';
+import { ID_TECNICO_INICIAL } from '../dominio/TecnicoInicial';
 
 interface UsuarioRow {
     id: string; nome: string; email: string; senha_hash: string;
@@ -19,6 +20,30 @@ export class RepositorioUsuarioSupabase implements RepositorioUsuario {
             .eq('email', email.trim().toLowerCase()).maybeSingle<UsuarioRow>();
         if (error) throw new Error(`Não foi possível consultar usuários: ${error.message}`);
         return data ? new Usuario(data.id, data.nome, data.email, data.senha_hash, data.perfil, data.situacao) : null;
+    }
+
+    async listarUsuarios(): Promise<UsuarioGerenciado[]> {
+        const usuarios: UsuarioGerenciado[] = [];
+        const tamanhoPagina = 500;
+        for (let inicio = 0; ; inicio += tamanhoPagina) {
+            const { data, error } = await this.cliente.from('usuarios')
+                .select('id,nome,email,perfil,situacao').order('id')
+                .range(inicio, inicio + tamanhoPagina - 1);
+            if (error) throw new Error(`Não foi possível consultar usuários: ${error.message}`);
+            usuarios.push(...(data ?? []));
+            if (!data || data.length < tamanhoPagina) break;
+        }
+        return usuarios.sort((a, b) => a.nome.localeCompare(b.nome));
+    }
+
+    async excluirUsuario(id: string): Promise<ResultadoExclusao> {
+        if (id === ID_TECNICO_INICIAL) return 'protegido';
+        const { data, error } = await this.cliente.rpc('excluir_usuario_helpflow', { usuario_id: id });
+        if (error) throw new Error(`Não foi possível excluir o usuário: ${error.message}`);
+        if (data !== 'excluido' && data !== 'ausente' && data !== 'protegido' && data !== 'pendencias') {
+            throw new Error('Resposta inesperada ao excluir usuário.');
+        }
+        return data;
     }
 
     async listarTecnicosAtivos(): Promise<TecnicoAtivo[]> {

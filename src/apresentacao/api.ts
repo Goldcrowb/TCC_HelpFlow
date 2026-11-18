@@ -3,6 +3,7 @@ export interface UsuarioSessao {
     nome: string;
     email: string;
     perfil: 'cliente' | 'tecnico';
+    podeGerenciarUsuarios?: boolean;
 }
 export interface ChamadoView {
     id: string;
@@ -97,4 +98,13 @@ export async function decidirSolicitacaoTecnico(id: string, decisao: 'aprovar' |
     return requisicao<{ situacao: string }>(`/api/tecnicos/solicitacoes/${encodeURIComponent(id)}`, {
         method: 'PATCH', body: JSON.stringify({ decisao, motivo })
     });
+}
+
+export interface UsuarioGerenciado {
+    id: string; nome: string; email: string;
+    perfil: 'cliente' | 'tecnico'; situacao: 'ativo' | 'pendente' | 'recusado';
+}
+export async function listarUsuarios() { return requisicao<UsuarioGerenciado[]>('/api/usuarios'); }
+export async function excluirUsuario(id: string) {
+    return requisicao<{ ok: boolean }>(`/api/usuarios/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

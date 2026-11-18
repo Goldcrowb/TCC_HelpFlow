@@ -5,7 +5,7 @@ import {
     criarChamado, detalhesChamado, ehFalhaDeRede, ErroApi, listarAtendimentos,
     listarFila, listarMeusChamados, login, logout, UsuarioSessao, cadastrarUsuario,
     listarSolicitacoesTecnicos, decidirSolicitacaoTecnico, SolicitacaoTecnico, PerfilCadastro,
-    listarTecnicosAtivos, transferirChamado, TecnicoAtivo
+    listarTecnicosAtivos, transferirChamado, TecnicoAtivo, listarUsuarios, excluirUsuario, UsuarioGerenciado
 } from './api';
 import {
     adicionarPendente, descartarPendente, eventoPendencias, lerPendencias,
@@ -207,6 +207,53 @@ function PainelSolicitacoesTecnicos({ onError }: { onError: (msg: string) => voi
     </section>;
 }
 
+function PainelUsuarios({ usuario, onError }: { usuario: UsuarioSessao; onError: (msg: string) => void }) {
+    const [usuarios, setUsuarios] = useState<UsuarioGerenciado[]>([]);
+    const [aberto, setAberto] = useState(false);
+    const [carregando, setCarregando] = useState(false);
+    const [ocupado, setOcupado] = useState(false);
+    const [pesquisa, setPesquisa] = useState('');
+    const [perfil, setPerfil] = useState<'todos' | 'cliente' | 'tecnico'>('todos');
+    const [selecionado, setSelecionado] = useState<UsuarioGerenciado | null>(null);
+    const [aviso, setAviso] = useState('');
+    const trava = useRef(false);
+    const carregar = useCallback(async () => {
+        setCarregando(true);
+        try { setUsuarios(await listarUsuarios()); }
+        catch (erro) { onError(mensagemErro(erro)); }
+        finally { setCarregando(false); }
+    }, [onError]);
+    function abrir() {
+        setAberto(!aberto);
+        if (!aberto) void carregar();
+    }
+    async function confirmarExclusao() {
+        if (!selecionado || trava.current || selecionado.id === usuario.id) return;
+        trava.current = true;
+        setOcupado(true); setAviso('');
+        try {
+            await excluirUsuario(selecionado.id);
+            setAviso(`Conta de ${selecionado.nome} excluída.`);
+            setUsuarios(atuais => atuais.filter(u => u.id !== selecionado.id));
+            setSelecionado(null);
+            await carregar();
+        } catch (erro) { onError(mensagemErro(erro)); setSelecionado(null); }
+        finally { trava.current = false; setOcupado(false); }
+    }
+    const filtrados = usuarios.filter(u => (perfil === 'todos' || u.perfil === perfil) &&
+        `${u.nome} ${u.email}`.toLowerCase().includes(pesquisa.trim().toLowerCase()));
+    return <section className="approval-panel" aria-label="Gerenciamento de usuários">
+        <div className="approval-heading"><div><span className="eyebrow dark">ADMINISTRAÇÃO</span><h3>Gerenciar usuários</h3><p>Consulte e exclua contas de clientes e técnicos.</p></div>
+            <button type="button" className="button-outline" onClick={abrir} aria-expanded={aberto}>{aberto ? 'Ocultar usuários' : 'Ver usuários'}</button></div>
+        {aberto && <div className="approval-list">
+            <div className="approval-heading"><div className="approval-actions"><select aria-label="Filtrar perfil" value={perfil} onChange={e => setPerfil(e.target.value as typeof perfil)}><option value="todos">Todos os perfis</option><option value="cliente">Clientes</option><option value="tecnico">Técnicos</option></select><input className="search" aria-label="Pesquisar usuários" placeholder="Nome ou e-mail..." value={pesquisa} onChange={e => setPesquisa(e.target.value)} /></div><button className="button-outline" disabled={carregando || ocupado} onClick={() => void carregar()}>Atualizar</button></div>
+            {aviso && <p role="status">{aviso}</p>}
+            {carregando ? <p>Carregando usuários...</p> : filtrados.length === 0 ? <p>Nenhum usuário encontrado.</p> : filtrados.map(u => <article className="approval-item" key={u.id}><div><strong>{u.nome}</strong><small>{u.email} · {u.perfil === 'tecnico' ? 'Técnico' : 'Cliente'} · {u.situacao === 'ativo' ? 'Ativo' : u.situacao === 'pendente' ? 'Pendente' : 'Recusado'}</small></div>{u.id === usuario.id ? <small>Conta responsável (protegida)</small> : <button type="button" className="button-outline button-danger" disabled={ocupado} onClick={() => { setSelecionado(u); setAviso(''); }}>Excluir usuário</button>}</article>)}
+        </div>}
+        {selecionado && <div className="modal-backdrop"><section className="modal" role="dialog" aria-modal="true" aria-label="Confirmar exclusão de usuário"><h2>Excluir usuário?</h2><p>Você está prestes a excluir a conta de <strong>{selecionado.nome}</strong> ({selecionado.email}).</p><p>A conta perderá o acesso imediatamente. Os chamados e as mensagens serão preservados. Esta ação não pode ser desfeita. Técnicos com atendimentos em aberto precisam transferi-los ou resolvê-los antes.</p><div className="form-actions"><button type="button" className="button-outline" disabled={ocupado} onClick={() => setSelecionado(null)}>Cancelar</button><button type="button" className="button-outline button-danger" disabled={ocupado} onClick={() => void confirmarExclusao()}>{ocupado ? 'Excluindo...' : 'Confirmar exclusão'}</button></div></section></div>}
+    </section>;
+}
+
 function FormularioChamado({ usuario, onError, onChanged }: { usuario: UsuarioSessao; onError: (msg: string) => void; onChanged: () => Promise<void> }) {
     const [aberto, setAberto] = useState(false), [titulo, setTitulo] = useState(''), [descricao, setDescricao] = useState(''), [categoria, setCategoria] = useState(categorias[0]), [enviando, setEnviando] = useState(false);
     async function enviar(event: FormEvent) {
@@ -277,6 +324,7 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
     return <><div className="section-heading"><div><span className="eyebrow dark">VISÃO DO SUPORTE</span><h2>Gerenciar atendimentos</h2><p>Organize os chamados e acompanhe cada atendimento.</p></div><button className="button-outline" onClick={() => void carregar()}>↻ Atualizar</button></div>
         <div className="stats"><IndicadorResumo label="Na fila" valor={fila.length} icon="▤"/><IndicadorResumo label="Meus atendimentos" valor={atendimentos.length} icon="◷"/><IndicadorResumo label="Resolvidos por mim" valor={atendimentos.filter((c) => c.status === 'Resolvido').length} icon="✓"/></div>
         <PainelSolicitacoesTecnicos onError={onError} />
+        {usuario.podeGerenciarUsuarios && <PainelUsuarios usuario={usuario} onError={onError} />}
         <div className="toolbar"><div className="filter-tabs"><button className={aba === 'fila' ? 'active' : ''} onClick={() => setAba('fila')}>Fila geral <span>{fila.length}</span></button><button className={aba === 'meus' ? 'active' : ''} onClick={() => setAba('meus')}>Meus atendimentos <span>{atendimentos.length}</span></button></div><input className="search" aria-label="Pesquisar chamados" value={pesquisa} onChange={(e) => setPesquisa(e.target.value)} placeholder="Pesquisar chamados..." /></div>
         {aba === 'meus' && <div className="toolbar"><div className="filter-tabs" role="group" aria-label="Filtrar meus atendimentos por situação">
             <button type="button" className={filtroStatus === 'abertos' ? 'active' : ''} aria-pressed={filtroStatus === 'abertos'} onClick={() => setFiltroStatus('abertos')}>Em aberto <span>{totalAbertos}</span></button>
