@@ -1,4 +1,4 @@
-import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
     adicionarMensagem, alterarStatus, atribuirChamado, ChamadoView, consultarSessao,
@@ -237,11 +237,29 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
         finally { setCarregando(false); }
     }, [usuario, onError]);
     useEffect(() => { void carregar(); }, [carregar, atualizacao]);
-    async function assumir(id: string) {
+    const atribuindo = useRef(false);
+    async function assumir(id: string, abrirDetalhes = true): Promise<ChamadoView | null> {
+        if (atribuindo.current) return null;
+        if (!navigator.onLine) {
+            onError('Conecte-se à internet para assumir o chamado.');
+            return null;
+        }
+        atribuindo.current = true;
         setOcupado(id);
-        try { await atribuirChamado(usuario, id); await carregar(); setAba('meus'); setSelecionado(id); }
-        catch (e) { onError(mensagemErro(e)); await carregar(); }
-        finally { setOcupado(''); }
+        try {
+            const chamado = await atribuirChamado(usuario, id);
+            await carregar();
+            setAba('meus');
+            if (abrirDetalhes) setSelecionado(id);
+            return chamado;
+        } catch (e) {
+            onError(mensagemErro(e));
+            await carregar();
+            return null;
+        } finally {
+            atribuindo.current = false;
+            setOcupado('');
+        }
     }
     const lista = aba === 'fila' ? fila : atendimentos;
     const filtrados = lista.filter((c) => `${c.titulo} ${c.descricao} ${c.categoria}`.toLowerCase().includes(pesquisa.toLowerCase()));
@@ -249,8 +267,8 @@ function PainelTecnico({ usuario, onError, atualizacao }: { usuario: UsuarioSess
         <div className="stats"><IndicadorResumo label="Na fila" valor={fila.length} icon="▤"/><IndicadorResumo label="Meus atendimentos" valor={atendimentos.length} icon="◷"/><IndicadorResumo label="Resolvidos por mim" valor={atendimentos.filter((c) => c.status === 'Resolvido').length} icon="✓"/></div>
         <PainelSolicitacoesTecnicos onError={onError} />
         <div className="toolbar"><div className="filter-tabs"><button className={aba === 'fila' ? 'active' : ''} onClick={() => setAba('fila')}>Fila geral <span>{fila.length}</span></button><button className={aba === 'meus' ? 'active' : ''} onClick={() => setAba('meus')}>Meus atendimentos <span>{atendimentos.length}</span></button></div><input className="search" aria-label="Pesquisar chamados" value={pesquisa} onChange={(e) => setPesquisa(e.target.value)} placeholder="Pesquisar chamados..." /></div>
-        <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando atendimentos..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo={aba === 'fila' ? 'Fila vazia' : 'Nenhum atendimento encontrado'} texto={aba === 'fila' ? 'Não há chamados aguardando atendimento.' : 'Assuma um chamado na fila geral para começar.'} /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} onAssumir={aba === 'fila' ? () => void assumir(c.id) : undefined} ocupado={ocupado === c.id} />)}</div>
-        {selecionado && <Detalhes usuario={usuario} id={selecionado} onClose={() => setSelecionado(null)} onError={onError} onChanged={carregar} />}
+        <div className="cards">{carregando ? <MensagemListaVazia titulo="Carregando atendimentos..." /> : filtrados.length === 0 ? <MensagemListaVazia titulo={aba === 'fila' ? 'Fila vazia' : 'Nenhum atendimento encontrado'} texto={aba === 'fila' ? 'Não há chamados aguardando atendimento.' : 'Assuma um chamado na fila geral para começar.'} /> : filtrados.map((c) => <ChamadoCard key={c.id} chamado={c} onClick={() => setSelecionado(c.id)} onAssumir={aba === 'fila' ? () => void assumir(c.id) : undefined} ocupado={!!ocupado} />)}</div>
+        {selecionado && <Detalhes key={selecionado} usuario={usuario} id={selecionado} onClose={() => setSelecionado(null)} onError={onError} onChanged={carregar} onAssumir={() => assumir(selecionado, false)} ocupado={!!ocupado} />}
     </>;
 }
 
@@ -260,7 +278,12 @@ function ChamadoCard({ chamado, onClick, onAssumir, ocupado }: { chamado: Chamad
     return <article className="ticket-card"><div className="ticket-top"><span className="category">{chamado.categoria}</span><span className={statusClasse(chamado.status)}>{chamado.status}</span></div><h3><button className="ticket-title" onClick={onClick}>{chamado.titulo}</button></h3><p>{chamado.descricao}</p><div className="ticket-bottom"><small>◷ {formatarData(chamado.dataAbertura)}</small>{onAssumir && chamado.tecnicoResponsavelId === null ? <button className="button-small" disabled={ocupado} onClick={onAssumir}>{ocupado ? 'Aguarde...' : 'Assumir →'}</button> : <button className="button-link" onClick={onClick}>Ver detalhes →</button>}</div></article>;
 }
 
-function Detalhes({ usuario, id, onClose, onError, onChanged }: { usuario: UsuarioSessao; id: string; onClose: () => void; onError: (msg: string) => void; onChanged?: () => Promise<void> }) {
+function Detalhes({ usuario, id, onClose, onError, onChanged, onAssumir, ocupado }: {
+    usuario: UsuarioSessao; id: string; onClose: () => void; onError: (msg: string) => void;
+    onChanged?: () => Promise<void>;
+    onAssumir?: () => Promise<ChamadoView | null>;
+    ocupado?: boolean;
+}) {
     const [dados, setDados] = useState<Awaited<ReturnType<typeof detalhesChamado>> | null>(null), [texto, setTexto] = useState(''), [enviando, setEnviando] = useState(false), [alterando, setAlterando] = useState(false);
     const carregar = useCallback(async () => { try { setDados(await detalhesChamado(usuario, id)); } catch (e) { if (navigator.onLine) onError(mensagemErro(e)); } }, [usuario, id, onError]);
     useEffect(() => { void carregar(); }, [carregar]);
@@ -284,11 +307,30 @@ function Detalhes({ usuario, id, onClose, onError, onChanged }: { usuario: Usuar
         catch (e) { onError(mensagemErro(e)); await carregar(); }
         finally { setAlterando(false); }
     }
+    async function assumirNosDetalhes() {
+        if (!onAssumir || ocupado) return;
+        const chamado = await onAssumir();
+        if (chamado) {
+            setDados((anteriores) => anteriores ? { ...anteriores, chamado } : anteriores);
+        } else {
+            // Atualiza a situação caso outro técnico tenha assumido primeiro.
+            await carregar();
+        }
+    }
     const responsavel = dados?.chamado.tecnicoResponsavelId === usuario.id;
+    const podeAssumir = usuario.perfil === 'tecnico' && !!onAssumir
+        && dados?.chamado.status === 'Aberto' && dados.chamado.tecnicoResponsavelId === null;
+    const orientacaoTecnico = responsavel ? 'Atualize o status conforme o progresso.'
+        : podeAssumir ? 'Assuma este chamado para alterar o status e enviar mensagens.'
+        : 'Este chamado não está disponível para atribuição.';
     return <div className="modal-backdrop" onMouseDown={onClose}><section className="modal ticket-modal" role="dialog" aria-modal="true" aria-label="Detalhes do chamado" onMouseDown={(e) => e.stopPropagation()}><button className="close" aria-label="Fechar detalhes" onClick={onClose}>×</button>{!dados ? <p>Carregando detalhes...</p> : <><div className="modal-heading"><div><span className="category">{dados.chamado.categoria}</span><h2>{dados.chamado.titulo}</h2><small>Aberto em {formatarData(dados.chamado.dataAbertura)}</small></div><span className={statusClasse(dados.chamado.status)}>{dados.chamado.status}</span></div><p className="ticket-description">{dados.chamado.descricao}</p>
-        {usuario.perfil === 'tecnico' && <div className="status-panel"><div><b>{responsavel ? 'Este chamado está com você' : 'Acompanhamento técnico'}</b><small>{responsavel ? 'Atualize o status conforme o progresso.' : 'Para alterar o status, assuma o chamado na fila geral.'}</small></div><select aria-label="Status do chamado" disabled={!responsavel || alterando} value={dados.chamado.status} onChange={(e) => void mudarStatus(e.target.value)}>{status.map((s) => <option key={s}>{s}</option>)}</select></div>}
+        {usuario.perfil === 'tecnico' && <div className="status-panel">
+            <div><b>{responsavel ? 'Este chamado está com você' : 'Acompanhamento técnico'}</b><small>{orientacaoTecnico}</small></div>
+            {podeAssumir ? <button type="button" className="primary-btn" disabled={ocupado} onClick={() => void assumirNosDetalhes()}>{ocupado ? 'Assumindo...' : 'Assumir chamado'}</button>
+                : <select aria-label="Status do chamado" disabled={!responsavel || alterando} value={dados.chamado.status} onChange={(e) => void mudarStatus(e.target.value)}>{status.map((s) => <option key={s}>{s}</option>)}</select>}
+        </div>}
         <h3 className="subheading">Histórico de mensagens <span>{dados.mensagens.length}</span></h3><div className="messages">{dados.mensagens.length === 0 && <div className="message-empty">Ainda não há mensagens. Inicie a conversa abaixo.</div>}{dados.mensagens.map((m) => <div className={`message ${m.autorId === usuario.id ? 'mine' : ''}`} key={m.id}><div className="message-meta"><b>{m.autorId === usuario.id ? 'Você' : m.autorId.startsWith('TEC-') ? 'Técnico' : 'Cliente'}</b><time dateTime={m.dataEnvio}>{formatarData(m.dataEnvio)}</time></div><p>{m.conteudo}</p></div>)}</div>
-        <form onSubmit={enviarMensagem} className="message-form"><label htmlFor="nova-mensagem">Enviar mensagem</label><textarea id="nova-mensagem" value={texto} maxLength={4000} disabled={usuario.perfil === 'tecnico' && !responsavel} onChange={(e) => setTexto(e.target.value)} placeholder={usuario.perfil === 'tecnico' && !responsavel ? 'Assuma o chamado na fila antes de responder.' : 'Escreva uma mensagem para registrar no histórico...'} required /><div className="form-actions"><small>Histórico com data e hora do envio</small><button className="primary-btn" disabled={enviando || (usuario.perfil === 'tecnico' && !responsavel)}>{enviando ? 'Enviando...' : 'Enviar mensagem'}</button></div></form>
+        <form onSubmit={enviarMensagem} className="message-form"><label htmlFor="nova-mensagem">Enviar mensagem</label><textarea id="nova-mensagem" value={texto} maxLength={4000} disabled={usuario.perfil === 'tecnico' && !responsavel} onChange={(e) => setTexto(e.target.value)} placeholder={usuario.perfil === 'tecnico' && !responsavel ? (podeAssumir ? 'Assuma o chamado antes de responder.' : 'Somente o técnico responsável pode responder.') : 'Escreva uma mensagem para registrar no histórico...'} required /><div className="form-actions"><small>Histórico com data e hora do envio</small><button className="primary-btn" disabled={enviando || (usuario.perfil === 'tecnico' && !responsavel)}>{enviando ? 'Enviando...' : 'Enviar mensagem'}</button></div></form>
         </>}</section></div>;
 }
 
