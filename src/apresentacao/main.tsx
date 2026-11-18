@@ -4,7 +4,8 @@ import {
     adicionarMensagem, alterarStatus, atribuirChamado, ChamadoView, consultarSessao,
     criarChamado, detalhesChamado, ehFalhaDeRede, ErroApi, listarAtendimentos,
     listarFila, listarMeusChamados, login, logout, UsuarioSessao, cadastrarUsuario,
-    listarSolicitacoesTecnicos, decidirSolicitacaoTecnico, SolicitacaoTecnico, PerfilCadastro
+    listarSolicitacoesTecnicos, decidirSolicitacaoTecnico, SolicitacaoTecnico, PerfilCadastro,
+    listarTecnicosAtivos, transferirChamado, TecnicoAtivo
 } from './api';
 import {
     adicionarPendente, descartarPendente, eventoPendencias, lerPendencias,
@@ -288,7 +289,7 @@ function Detalhes({ usuario, id, onClose, onError, onChanged, onAssumir, ocupado
     const carregar = useCallback(async () => { try { setDados(await detalhesChamado(usuario, id)); } catch (e) { if (navigator.onLine) onError(mensagemErro(e)); } }, [usuario, id, onError]);
     useEffect(() => { void carregar(); }, [carregar]);
     async function enviarMensagem(event: FormEvent) {
-        event.preventDefault(); if (!texto.trim()) return;
+        event.preventDefault(); if (!texto.trim() || transferenciaEmCurso.current) return;
         setEnviando(true); const opId = crypto.randomUUID();
         try {
             if (!navigator.onLine) throw new ErroApi('Sem internet', 0);
@@ -301,12 +302,56 @@ function Detalhes({ usuario, id, onClose, onError, onChanged, onAssumir, ocupado
         } finally { setEnviando(false); }
     }
     async function mudarStatus(novoStatus: string) {
+        if (transferenciaEmCurso.current) return;
         if (!navigator.onLine) return onError('Conecte-se à internet para alterar o status.');
         setAlterando(true);
         try { await alterarStatus(usuario, id, novoStatus); await carregar(); await onChanged?.(); }
         catch (e) { onError(mensagemErro(e)); await carregar(); }
         finally { setAlterando(false); }
     }
+    const [mostrarTransferencia, setMostrarTransferencia] = useState(false);
+    const [tecnicos, setTecnicos] = useState<TecnicoAtivo[]>([]);
+    const [destino, setDestino] = useState('');
+    const [buscandoTecnicos, setBuscandoTecnicos] = useState(false);
+    const [transferindo, setTransferindo] = useState(false);
+    const [avisoTransferencia, setAvisoTransferencia] = useState('');
+    const transferenciaEmCurso = useRef(false);
+
+    async function abrirTransferencia() {
+        if (!navigator.onLine) return onError('Conecte-se à internet para transferir o chamado.');
+        setMostrarTransferencia(true);
+        setBuscandoTecnicos(true);
+        setTecnicos([]);
+        setDestino('');
+        try { setTecnicos(await listarTecnicosAtivos()); }
+        catch (e) { onError(mensagemErro(e)); setMostrarTransferencia(false); }
+        finally { setBuscandoTecnicos(false); }
+    }
+
+    async function confirmarTransferencia(event: FormEvent) {
+        event.preventDefault();
+        if (!dados || !destino || transferenciaEmCurso.current || alterando || enviando) return;
+        if (!navigator.onLine) return onError('Conecte-se à internet para transferir o chamado.');
+        const tecnico = tecnicos.find(t => t.id === destino);
+        if (!tecnico) return;
+        transferenciaEmCurso.current = true;
+        setTransferindo(true);
+        try {
+            const chamado = await transferirChamado(id, tecnico.id, dados.chamado.versao);
+            setDados(anteriores => anteriores ? { ...anteriores, chamado } : anteriores);
+            setAvisoTransferencia(`Chamado transferido para ${tecnico.nome}.`);
+            setMostrarTransferencia(false);
+            await onChanged?.();
+        } catch (e) {
+            onError(mensagemErro(e));
+            await carregar();
+            await onChanged?.();
+        } finally {
+            transferenciaEmCurso.current = false;
+            setTransferindo(false);
+        }
+    }
+
     async function assumirNosDetalhes() {
         if (!onAssumir || ocupado) return;
         const chamado = await onAssumir();
@@ -320,6 +365,7 @@ function Detalhes({ usuario, id, onClose, onError, onChanged, onAssumir, ocupado
     const responsavel = dados?.chamado.tecnicoResponsavelId === usuario.id;
     const podeAssumir = usuario.perfil === 'tecnico' && !!onAssumir
         && dados?.chamado.status === 'Aberto' && dados.chamado.tecnicoResponsavelId === null;
+    const podeTransferir = usuario.perfil === 'tecnico' && responsavel && dados?.chamado.status !== 'Resolvido';
     const orientacaoTecnico = responsavel ? 'Atualize o status conforme o progresso.'
         : podeAssumir ? 'Assuma este chamado para alterar o status e enviar mensagens.'
         : 'Este chamado não está disponível para atribuição.';
@@ -327,10 +373,28 @@ function Detalhes({ usuario, id, onClose, onError, onChanged, onAssumir, ocupado
         {usuario.perfil === 'tecnico' && <div className="status-panel">
             <div><b>{responsavel ? 'Este chamado está com você' : 'Acompanhamento técnico'}</b><small>{orientacaoTecnico}</small></div>
             {podeAssumir ? <button type="button" className="primary-btn" disabled={ocupado} onClick={() => void assumirNosDetalhes()}>{ocupado ? 'Assumindo...' : 'Assumir chamado'}</button>
-                : <select aria-label="Status do chamado" disabled={!responsavel || alterando} value={dados.chamado.status} onChange={(e) => void mudarStatus(e.target.value)}>{status.map((s) => <option key={s}>{s}</option>)}</select>}
+                : <select aria-label="Status do chamado" disabled={!responsavel || alterando || transferindo} value={dados.chamado.status} onChange={(e) => void mudarStatus(e.target.value)}>{status.map((s) => <option key={s}>{s}</option>)}</select>}
         </div>}
-        <h3 className="subheading">Histórico de mensagens <span>{dados.mensagens.length}</span></h3><div className="messages">{dados.mensagens.length === 0 && <div className="message-empty">Ainda não há mensagens. Inicie a conversa abaixo.</div>}{dados.mensagens.map((m) => <div className={`message ${m.autorId === usuario.id ? 'mine' : ''}`} key={m.id}><div className="message-meta"><b>{m.autorId === usuario.id ? 'Você' : m.autorId.startsWith('TEC-') ? 'Técnico' : 'Cliente'}</b><time dateTime={m.dataEnvio}>{formatarData(m.dataEnvio)}</time></div><p>{m.conteudo}</p></div>)}</div>
-        <form onSubmit={enviarMensagem} className="message-form"><label htmlFor="nova-mensagem">Enviar mensagem</label><textarea id="nova-mensagem" value={texto} maxLength={4000} disabled={usuario.perfil === 'tecnico' && !responsavel} onChange={(e) => setTexto(e.target.value)} placeholder={usuario.perfil === 'tecnico' && !responsavel ? (podeAssumir ? 'Assuma o chamado antes de responder.' : 'Somente o técnico responsável pode responder.') : 'Escreva uma mensagem para registrar no histórico...'} required /><div className="form-actions"><small>Histórico com data e hora do envio</small><button className="primary-btn" disabled={enviando || (usuario.perfil === 'tecnico' && !responsavel)}>{enviando ? 'Enviando...' : 'Enviar mensagem'}</button></div></form>
+        {avisoTransferencia && <p className="aviso-transferencia" role="status">{avisoTransferencia}</p>}
+        {podeTransferir && <div className="transferencia-painel">
+            {!mostrarTransferencia ? <button type="button" className="button-outline" disabled={alterando || enviando || transferindo} onClick={() => void abrirTransferencia()}>Transferir chamado</button>
+            : <form className="form-grid" onSubmit={confirmarTransferencia}>
+                <label>Transferir para outro técnico
+                    <select value={destino} onChange={e => setDestino(e.target.value)} disabled={buscandoTecnicos || transferindo} required>
+                        <option value="">{buscandoTecnicos ? 'Carregando técnicos...' : 'Selecione um técnico'}</option>
+                        {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nome} ({t.email})</option>)}
+                    </select>
+                </label>
+                {!buscandoTecnicos && tecnicos.length === 0 && <small>Nenhum outro técnico aprovado está cadastrado.</small>}
+                <small>O chamado e suas mensagens serão mantidos. Você deixará de ser o responsável pelo atendimento.</small>
+                <div className="form-actions">
+                    <button type="button" className="button-outline" disabled={transferindo} onClick={() => setMostrarTransferencia(false)}>Cancelar</button>
+                    <button className="primary-btn" disabled={!destino || buscandoTecnicos || transferindo || alterando || enviando}>{transferindo ? 'Transferindo...' : 'Confirmar transferência'}</button>
+                </div>
+            </form>}
+        </div>}
+        <h3 className="subheading">Histórico de mensagens <span>{dados.mensagens.length}</span></h3><div className="messages">{dados.mensagens.length === 0 && <div className="message-empty">Ainda não há mensagens. Inicie a conversa abaixo.</div>}{dados.mensagens.map((m) => <div className={`message ${m.autorId === usuario.id ? 'mine' : ''}`} key={m.id}><div className="message-meta"><b>{m.autorId === usuario.id ? 'Você' : m.autorId === dados.chamado.clienteId ? 'Cliente' : 'Técnico'}</b><time dateTime={m.dataEnvio}>{formatarData(m.dataEnvio)}</time></div><p>{m.conteudo}</p></div>)}</div>
+        <form onSubmit={enviarMensagem} className="message-form"><label htmlFor="nova-mensagem">Enviar mensagem</label><textarea id="nova-mensagem" value={texto} maxLength={4000} disabled={transferindo || (usuario.perfil === 'tecnico' && !responsavel)} onChange={(e) => setTexto(e.target.value)} placeholder={usuario.perfil === 'tecnico' && !responsavel ? (podeAssumir ? 'Assuma o chamado antes de responder.' : 'Somente o técnico responsável pode responder.') : 'Escreva uma mensagem para registrar no histórico...'} required /><div className="form-actions"><small>Histórico com data e hora do envio</small><button className="primary-btn" disabled={enviando || transferindo || (usuario.perfil === 'tecnico' && !responsavel)}>{enviando ? 'Enviando...' : 'Enviar mensagem'}</button></div></form>
         </>}</section></div>;
 }
 

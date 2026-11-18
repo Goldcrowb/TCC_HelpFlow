@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
-import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico } from '../dominio/RepositorioUsuario';
+import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo } from '../dominio/RepositorioUsuario';
 import { SituacaoCadastro } from '../dominio/SituacaoCadastro';
 import { Usuario } from '../dominio/Usuario';
 
@@ -19,6 +19,27 @@ export class RepositorioUsuarioSupabase implements RepositorioUsuario {
             .eq('email', email.trim().toLowerCase()).maybeSingle<UsuarioRow>();
         if (error) throw new Error(`Não foi possível consultar usuários: ${error.message}`);
         return data ? new Usuario(data.id, data.nome, data.email, data.senha_hash, data.perfil, data.situacao) : null;
+    }
+
+    async listarTecnicosAtivos(): Promise<TecnicoAtivo[]> {
+        const tecnicos: TecnicoAtivo[] = [];
+        const tamanhoPagina = 500;
+        for (let inicio = 0; ; inicio += tamanhoPagina) {
+            const { data, error } = await this.cliente.from('usuarios').select('id,nome,email')
+                .eq('perfil', 'tecnico').eq('situacao', 'ativo').order('id')
+                .range(inicio, inicio + tamanhoPagina - 1);
+            if (error) throw new Error(`Não foi possível consultar técnicos: ${error.message}`);
+            tecnicos.push(...(data ?? []));
+            if (!data || data.length < tamanhoPagina) break;
+        }
+        return tecnicos.sort((a, b) => a.nome.localeCompare(b.nome));
+    }
+
+    async buscarTecnicoAtivo(id: string): Promise<TecnicoAtivo | null> {
+        const { data, error } = await this.cliente.from('usuarios').select('id,nome,email')
+            .eq('perfil', 'tecnico').eq('situacao', 'ativo').eq('id', id).maybeSingle<TecnicoAtivo>();
+        if (error) throw new Error(`Não foi possível consultar o técnico: ${error.message}`);
+        return data;
     }
 
     async cadastrar(usuario: Usuario): Promise<void> {

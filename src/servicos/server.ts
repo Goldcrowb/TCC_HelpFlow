@@ -29,7 +29,7 @@ const app = express();
 const repositorioUsuario = criarRepositorioUsuario();
 const cadastroService = new CadastroService(repositorioUsuario);
 const autenticacaoService = new AutenticacaoService(repositorioUsuario);
-const chamadoService = new ChamadoService(criarRepositorioChamado());
+const chamadoService = new ChamadoService(criarRepositorioChamado(), repositorioUsuario);
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -139,6 +139,11 @@ app.post('/api/auth/cadastro', async (req, res, next) => {
     } catch (erro) { return next(erro); }
 });
 
+app.get('/api/tecnicos/ativos', async (req, res, next) => {
+    try { res.json(await chamadoService.listarTecnicosParaTransferencia(await exigirUsuario(req))); }
+    catch (erro) { next(erro); }
+});
+
 app.get('/api/tecnicos/solicitacoes', async (req, res, next) => {
     try { return res.json(await cadastroService.listarSolicitacoes(await exigirUsuario(req))); }
     catch (erro) { return next(erro); }
@@ -217,6 +222,16 @@ app.get('/api/chamados/:id', async (req, res, next) => {
 app.post('/api/chamados/:id/atribuir', async (req, res, next) => {
     try { res.json(serializarChamado(await chamadoService.atribuirChamado(await exigirUsuario(req), String(req.params.id)))); }
     catch (erro) { next(erro); }
+});
+
+app.patch('/api/chamados/:id/transferir', async (req, res, next) => {
+    try {
+        const usuario = await exigirUsuario(req);
+        const chamado = await chamadoService.transferirChamado(
+            usuario, String(req.params.id), req.body?.tecnicoId, req.body?.versao
+        );
+        res.json(serializarChamado(chamado));
+    } catch (erro) { next(erro); }
 });
 
 app.patch('/api/chamados/:id/status', async (req, res, next) => {

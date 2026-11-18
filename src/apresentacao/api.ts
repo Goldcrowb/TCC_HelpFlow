@@ -63,6 +63,15 @@ export async function detalhesChamado(_usuario: UsuarioSessao, id: string) {
 export async function atribuirChamado(_usuario: UsuarioSessao, id: string) {
     return requisicao<ChamadoView>(`/api/chamados/${encodeURIComponent(id)}/atribuir`, { method: 'POST' });
 }
+export interface TecnicoAtivo { id: string; nome: string; email: string }
+export async function listarTecnicosAtivos() {
+    return requisicao<TecnicoAtivo[]>('/api/tecnicos/ativos');
+}
+export async function transferirChamado(id: string, tecnicoId: string, versao: number) {
+    return requisicao<ChamadoView>(`/api/chamados/${encodeURIComponent(id)}/transferir`, {
+        method: 'PATCH', body: JSON.stringify({ tecnicoId, versao })
+    });
+}
 export async function alterarStatus(_usuario: UsuarioSessao, id: string, status: string) {
     return requisicao<ChamadoView>(`/api/chamados/${encodeURIComponent(id)}/status`, {
         method: 'PATCH', body: JSON.stringify({ status })

@@ -205,3 +205,9 @@ button.button-link:hover { text-decoration: underline; }
 .approval-item { padding: 14px; background: #f7fafc; border: 1px solid var(--line); border-radius: 10px; }
 .approval-item > div:first-child { display: grid; gap: 4px; }
 .approval-item small { overflow-wrap: anywhere; }
+
+/* Transferência de chamados */
+.transferencia-painel { margin: -8px 0 24px; }
+.transferencia-painel .form-grid { margin: 0; padding: 16px; border: 1px solid #e1edf0; border-radius: 12px; background: #f3f8fa; gap: 12px; }
+.transferencia-painel small { line-height: 1.5; }
+.aviso-transferencia { color: #176b58; background: #eaf6f0; padding: 12px; border-radius: 8px; }

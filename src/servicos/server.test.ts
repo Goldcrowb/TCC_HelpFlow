@@ -240,3 +240,48 @@ describe('Cadastro de usuários e aprovação de técnicos', () => {
         expect((await fazerRota('/api/auth/cadastro', { metodo: 'POST', corpo: { ...corpo, email: emailTeste('fraca'), senha: '123' } })).status).toBe(400);
     });
 });
+
+describe('Transferência de chamados', () => {
+    test('transfere somente pelo responsável, mantém histórico e bloqueia operações antigas', async () => {
+        const cliente = await entrar();
+        const tecnico1 = await entrar('tecnico@helpflow.local');
+        const tecnico2 = await entrar('tecnico2@helpflow.local');
+        expect((await fazerRota('/api/tecnicos/ativos')).status).toBe(401);
+        expect((await fazerRota('/api/tecnicos/ativos', { cookie: cliente })).status).toBe(403);
+        const lista = await fazerRota('/api/tecnicos/ativos', { cookie: tecnico1 });
+        expect(lista.status).toBe(200);
+        expect(lista.dados.some((t: { id: string }) => t.id === 'TEC-01')).toBe(false);
+        expect(lista.dados.find((t: { id: string }) => t.id === 'TEC-02')).toMatchObject({ id: 'TEC-02', nome: 'Técnico Teste' });
+        expect(Object.keys(lista.dados[0]).sort()).toEqual(['email', 'id', 'nome']);
+        const novo = await fazerRota('/api/chamados', { metodo: 'POST', cookie: cliente, corpo: {
+            titulo: 'Transferência de atendimento', descricao: 'Precisa de outro técnico para continuar.', categoria: 'Hardware', operacaoId: operacao()
+        }});
+        expect(novo.status).toBe(201);
+        const id = novo.dados.id;
+        const rota = `/api/chamados/${id}/transferir`;
+        expect((await fazerRota(rota, { metodo: 'PATCH', cookie: tecnico1, corpo: { tecnicoId: 'TEC-02', versao: 1 } })).status).toBe(403);
+        const atribuido = await fazerRota(`/api/chamados/${id}/atribuir`, { metodo: 'POST', cookie: tecnico1 });
+        const versao = atribuido.dados.versao;
+        const msg = await fazerRota(`/api/chamados/${id}/mensagens`, { metodo: 'POST', cookie: tecnico1, corpo: { conteudo: 'Diagnóstico já realizado.' } });
+        const tentar = (cookie: string, tecnicoId: string, v = versao) => fazerRota(rota, { metodo: 'PATCH', cookie, corpo: { tecnicoId, versao: v } });
+        expect((await tentar(cliente, 'TEC-02')).status).toBe(403);
+        expect((await tentar(tecnico2, 'TEC-02')).status).toBe(403);
+        expect((await tentar(tecnico1, 'CLI-01')).status).toBe(400);
+        expect((await tentar(tecnico1, 'TEC-01')).status).toBe(400);
+        expect((await tentar(tecnico1, 'TEC-02', versao - 1)).status).toBe(409);
+        const transferencias = await Promise.all([tentar(tecnico1, 'TEC-02'), tentar(tecnico1, 'TEC-02')]);
+        expect(transferencias.filter(r => r.status === 200)).toHaveLength(1);
+        expect([403, 409]).toContain(transferencias.find(r => r.status !== 200)?.status);
+        expect(transferencias.find(r => r.status === 200)?.dados).toMatchObject({ tecnicoResponsavelId: 'TEC-02', status: 'Em Andamento', versao: versao + 1 });
+        const detalhes = await fazerRota(`/api/chamados/${id}`, { cookie: tecnico2 });
+        expect(detalhes.dados.mensagens.some((m: { id: string }) => m.id === msg.dados.id)).toBe(true);
+        expect((await fazerRota('/api/chamados/atendimentos', { cookie: tecnico1 })).dados.some((c: { id: string }) => c.id === id)).toBe(false);
+        expect((await fazerRota('/api/chamados/atendimentos', { cookie: tecnico2 })).dados.some((c: { id: string }) => c.id === id)).toBe(true);
+        expect((await fazerRota(`/api/chamados/${id}/mensagens`, { metodo: 'POST', cookie: tecnico1, corpo: { conteudo: 'Tentativa após transferência.' } })).status).toBe(403);
+        expect((await fazerRota(`/api/chamados/${id}/status`, { metodo: 'PATCH', cookie: tecnico1, corpo: { status: 'Resolvido' } })).status).toBe(403);
+        expect((await fazerRota(`/api/chamados/${id}/mensagens`, { metodo: 'POST', cookie: tecnico2, corpo: { conteudo: 'Vou continuar o atendimento.' } })).status).toBe(201);
+        const resolvido = await fazerRota(`/api/chamados/${id}/status`, { metodo: 'PATCH', cookie: tecnico2, corpo: { status: 'Resolvido' } });
+        expect(resolvido.status).toBe(200);
+        expect((await tentar(tecnico2, 'TEC-01', resolvido.dados.versao)).status).toBe(400);
+    });
+});

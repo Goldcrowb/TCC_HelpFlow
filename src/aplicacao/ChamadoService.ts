@@ -4,6 +4,7 @@ import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 import { Mensagem } from '../dominio/Mensagem';
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
 import { RepositorioChamado } from '../dominio/RepositorioChamado';
+import { RepositorioUsuario } from '../dominio/RepositorioUsuario';
 import { StatusChamado } from '../dominio/StatusChamado';
 import { Usuario } from '../dominio/Usuario';
 
@@ -15,7 +16,10 @@ export interface CriarChamadoInput {
 }
 
 export class ChamadoService {
-    constructor(private readonly repositorio: RepositorioChamado) {}
+    constructor(
+        private readonly repositorio: RepositorioChamado,
+        private readonly usuarios: RepositorioUsuario
+    ) {}
 
     public async criarChamado(usuario: Usuario, dados: CriarChamadoInput): Promise<Chamado> {
         this.exigirPerfil(usuario, PerfilUsuario.CLIENTE);
@@ -80,6 +84,43 @@ export class ChamadoService {
             throw new DadoInvalidoException('O chamado já foi modificado por outro técnico.');
         }
         return chamado;
+    }
+
+    public async listarTecnicosParaTransferencia(usuario: Usuario) {
+        this.exigirTecnicoAtivo(usuario);
+        return (await this.usuarios.listarTecnicosAtivos()).filter(t => t.id !== usuario.getId());
+    }
+
+    public async transferirChamado(usuario: Usuario, chamadoId: string, tecnicoId: string, versao: number): Promise<Chamado> {
+        this.exigirTecnicoAtivo(usuario);
+        if (typeof tecnicoId !== 'string' || !tecnicoId.trim() || tecnicoId.length > 100) {
+            throw new DadoInvalidoException('Informe um técnico válido.');
+        }
+        if (!Number.isSafeInteger(versao) || versao < 1) {
+            throw new DadoInvalidoException('Versão do chamado inválida.');
+        }
+        const chamado = await this.obterChamado(chamadoId);
+        if (chamado.getTecnicoResponsavelId() !== usuario.getId()) {
+            throw new DadoInvalidoException('Usuário sem permissão para transferir este chamado.');
+        }
+        if (chamado.getVersao() !== versao) {
+            throw new DadoInvalidoException('O chamado já foi alterado. Atualize os detalhes e tente novamente.');
+        }
+        if (!await this.usuarios.buscarTecnicoAtivo(tecnicoId)) {
+            throw new DadoInvalidoException('Selecione um técnico aprovado e ativo.');
+        }
+        chamado.transferirTecnico(tecnicoId);
+        if (!await this.repositorio.salvar(chamado)) {
+            throw new DadoInvalidoException('O chamado já foi alterado. Atualize os detalhes e tente novamente.');
+        }
+        return chamado;
+    }
+
+    private exigirTecnicoAtivo(usuario: Usuario): void {
+        this.exigirPerfil(usuario, PerfilUsuario.TECNICO);
+        if (usuario.getSituacao() !== 'ativo') {
+            throw new DadoInvalidoException('Apenas técnicos aprovados podem transferir chamados.');
+        }
     }
 
     public async alterarStatus(usuario: Usuario, chamadoId: string, novoStatus: StatusChamado): Promise<Chamado> {

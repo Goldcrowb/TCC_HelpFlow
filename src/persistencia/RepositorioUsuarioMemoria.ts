@@ -1,5 +1,5 @@
 import { PerfilUsuario } from '../dominio/PerfilUsuario';
-import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico } from '../dominio/RepositorioUsuario';
+import { DecisaoTecnico, RepositorioUsuario, SolicitacaoTecnico, TecnicoAtivo } from '../dominio/RepositorioUsuario';
 import { Usuario } from '../dominio/Usuario';
 import { DadoInvalidoException } from '../dominio/DadoInvalidoException';
 
@@ -17,6 +17,16 @@ export class RepositorioUsuarioMemoria implements RepositorioUsuario {
 
     private inserirDemo(usuario: Usuario) { this.usuarios.set(usuario.getEmail(), usuario); this.datas.set(usuario.getId(), new Date().toISOString()); }
     async buscarPorEmail(email: string): Promise<Usuario | null> { return this.usuarios.get(email.trim().toLowerCase()) ?? null; }
+    async listarTecnicosAtivos(): Promise<TecnicoAtivo[]> {
+        return [...this.usuarios.values()]
+            .filter(u => u.getPerfil() === PerfilUsuario.TECNICO && u.getSituacao() === 'ativo')
+            .map(u => ({ id: u.getId(), nome: u.getNome(), email: u.getEmail() }))
+            .sort((a, b) => a.nome.localeCompare(b.nome));
+    }
+    async buscarTecnicoAtivo(id: string): Promise<TecnicoAtivo | null> {
+        return (await this.listarTecnicosAtivos()).find(t => t.id === id) ?? null;
+    }
+
     async cadastrar(usuario: Usuario): Promise<void> {
         if (this.usuarios.has(usuario.getEmail())) throw new DadoInvalidoException('Este e-mail já está cadastrado.');
         this.inserirDemo(usuario);

@@ -75,6 +75,20 @@ export class Chamado {
         this.versao += 1;
     }
 
+    public transferirTecnico(tecnicoId: string): void {
+        if (!this.tecnicoResponsavelId) {
+            throw new DadoInvalidoException('Assuma o chamado antes de transferir.');
+        }
+        if (this.status === StatusChamado.RESOLVIDO) {
+            throw new DadoInvalidoException('Chamados resolvidos não podem ser transferidos.');
+        }
+        if (!tecnicoId.trim() || tecnicoId === this.tecnicoResponsavelId) {
+            throw new DadoInvalidoException('Selecione um técnico diferente do atual.');
+        }
+        this.tecnicoResponsavelId = tecnicoId;
+        this.versao += 1;
+    }
+
     public alterarStatus(novoStatus: StatusChamado, isTecnico: boolean): void {
         if (!isTecnico) {
             throw new DadoInvalidoException('Apenas usuários técnicos podem alterar o status.');
