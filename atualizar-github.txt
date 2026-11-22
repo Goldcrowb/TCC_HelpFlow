@@ -1,12 +1,34 @@
-ATUALIZAÇÃO DO HELPFLOW 2.2.0
+ATUALIZAR O HELPFLOW NO GITHUB — VERSÃO 2.2
+=============================================
 
-1. Faça uma cópia da pasta local e dos dados do Supabase. Não exclua o banco existente.
-2. No SQL Editor do projeto Supabase atual, execute database.sql e depois scripts/verificar_banco.sql. Confira a função, a conta TEC-01 e o trigger. O SQL cria/atualiza estruturas sem apagar chamados ou contas durante a instalação. A rotina de exclusão só age quando chamada explicitamente.
-3. No GitHub Desktop, faça Pull origin antes de copiar os novos arquivos. Se houver alterações posteriores ao ZIP revisado, compare-as antes de substituir.
-4. Copie os arquivos da pasta HelpFlow para a RAIZ do clone, mantendo .git, .env local e as configurações próprias. Remova os documentos antigos substituídos pelo dossiê (docs/01... a docs/12..., arquitetura v2/v2_1 e slides antigos), SHA256SUMS.txt, tsconfig.core.json, PASSO_A_PASSO_COMMIT_E_RENDER.txt e os dois .bat antigos. Não apague outros arquivos sem verificar. Renomeie referências com caracteres #U caso ainda existam.
-5. Confira que .gitignore e .env.example estão presentes. Nunca faça commit de .env, node_modules ou dist.
-6. Commit: Consolida HelpFlow 2.2 e documentação da entrega final
-7. Push origin. No Render, mantenha as variáveis existentes e o comando npm ci --include=dev && npm run build; retome o serviço se suspenso. Acompanhe o status Live.
-8. Confira /api/saude (versão 2.2.0) e faça um teste completo com contas fictícias, incluindo exclusão. Consulte docs/pendencias.md e registre as evidências.
+1. Faça backup do projeto e do banco Supabase. No GitHub Desktop, clique em Pull origin antes de começar.
+2. Abra a pasta local do repositório (a que contém a pasta oculta .git).
+3. Copie para ela TODOS os arquivos que estão DENTRO da pasta TCC_HelpFlow-main deste ZIP.
+   Não exclua a pasta .git nem substitua arquivos .env com suas credenciais.
+4. IMPORTANTE: copiar arquivos novos NÃO APAGA os antigos que já estão no GitHub.
+   Remova manualmente do repositório os arquivos antigos listados abaixo, se existirem.
+   Faça isso apenas após confirmar que a versão final do PDF, dos slides e do código foi copiada.
 
-Se a implantação falhar, use os logs. Não altere chaves nem remova o banco para tentar resolver erros. A revisão não fez commits nem alterou seu serviço online.
+   - SHA256SUMS.txt (lista antiga estava desatualizada)
+   - PASSO_A_PASSO_COMMIT_E_RENDER.txt (orientava a atualização da versão 2.1)
+   - TESTAR-E-COMPILAR.bat (substituído por testar-projeto.bat)
+   - tsconfig.core.json (não utilizado pela configuração atual)
+   - apresentacao/Apresentacao_HelpFlow_TCC.pptx (apresentação antiga)
+   - docs/01_...md até docs/12_...md (documentos preliminares)
+   - docs/Documento_de_Arquitetura_HelpFlow_v2.docx e _v2_1.docx
+   - referências repetidas das Fases 4 e 5 com acentos ou nomes #U00...
+
+   MANTENHA os documentos finais docs/HelpFlow_EntregaFinal_v2.2.pdf e .docx,
+   docs/evidencias/, docs/diagramas/, o documento de arquitetura original
+   em referencias/, os scripts SQL, a apresentação final e todo o código em src/.
+
+5. Confira a migração SQL no manual e só execute database.sql no Supabase com backup prévio.
+6. No GitHub Desktop, confira exclusões e substituições antes do commit.
+   Mensagem sugerida: Organiza entrega final e remove documentos duplicados
+7. Clique em Push origin. Confira o deploy no Render e teste login, chamados,
+   atendimento, transferência e administração com contas fictícias.
+8. Antes da defesa, confira docs/pendencias.md e registre os testes externos de verdade.
+
+A entrega final exige o PDF D1–D9, código-fonte e evidências. O ZIP contém o
+código para instalar com Node/npm; não é um executável independente.
+NUNCA envie .env, senhas, chaves ou credenciais do Supabase ao GitHub.
