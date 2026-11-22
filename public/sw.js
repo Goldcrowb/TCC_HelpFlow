@@ -1,13 +1,13 @@
 /* Service worker do HelpFlow: somente arquivos estáticos.
    Nunca armazena API, login, cookies ou respostas privadas no cache. */
-const CACHE = 'helpflow-app-v2';
+const CACHE = 'helpflow-app-v2.2';
 const PRINCIPAIS = ['/', '/index.html', '/manifest.webmanifest'];
 self.addEventListener('install', (evento) => {
   evento.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRINCIPAIS)).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (evento) => {
   evento.waitUntil(Promise.all([
-    caches.keys().then((chaves) => Promise.all(chaves.filter((chave) => chave !== CACHE).map((chave) => caches.delete(chave)))),
+    caches.keys().then((chaves) => Promise.all(chaves.filter((chave) => chave.startsWith('helpflow-app-') && chave !== CACHE).map((chave) => caches.delete(chave)))),
     self.clients.claim()
   ]));
 });

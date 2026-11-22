@@ -1,0 +1,8 @@
+Data: 2026-11-18T23:16:44.810Z 
+Node: v22.16.0 V8: 12.4.254.21-node.26 
+SO: linux 6.18.57 
+CPU: INTEL(R) XEON(R) PLATINUM 8573C
+Semente: 20261118 | 30 repetições por método e volume, 5 aquecimentos. Entradas idênticas; geração e cópia excluídas do tempo; verificação da ordem após cada execução. Dados sintéticos, memória local, sem banco ou rede.
+100 | 0.0062 / 0.3098 | 0.0139 / 0.0862 ms (mediana / P95)
+1000 | 0.5009 / 0.8537 | 0.2421 / 0.6932 ms (mediana / P95)
+10000 | 49.6642 / 61.7399 | 3.1479 / 5.3578 ms (mediana / P95)

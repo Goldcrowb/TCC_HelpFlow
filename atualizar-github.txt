@@ -1,0 +1,12 @@
+ATUALIZAÇÃO DO HELPFLOW 2.2.0
+
+1. Faça uma cópia da pasta local e dos dados do Supabase. Não exclua o banco existente.
+2. No SQL Editor do projeto Supabase atual, execute database.sql e depois scripts/verificar_banco.sql. Confira a função, a conta TEC-01 e o trigger. O SQL cria/atualiza estruturas sem apagar chamados ou contas durante a instalação. A rotina de exclusão só age quando chamada explicitamente.
+3. No GitHub Desktop, faça Pull origin antes de copiar os novos arquivos. Se houver alterações posteriores ao ZIP revisado, compare-as antes de substituir.
+4. Copie os arquivos da pasta HelpFlow para a RAIZ do clone, mantendo .git, .env local e as configurações próprias. Remova os documentos antigos substituídos pelo dossiê (docs/01... a docs/12..., arquitetura v2/v2_1 e slides antigos), SHA256SUMS.txt, tsconfig.core.json, PASSO_A_PASSO_COMMIT_E_RENDER.txt e os dois .bat antigos. Não apague outros arquivos sem verificar. Renomeie referências com caracteres #U caso ainda existam.
+5. Confira que .gitignore e .env.example estão presentes. Nunca faça commit de .env, node_modules ou dist.
+6. Commit: Consolida HelpFlow 2.2 e documentação da entrega final
+7. Push origin. No Render, mantenha as variáveis existentes e o comando npm ci --include=dev && npm run build; retome o serviço se suspenso. Acompanhe o status Live.
+8. Confira /api/saude (versão 2.2.0) e faça um teste completo com contas fictícias, incluindo exclusão. Consulte docs/pendencias.md e registre as evidências.
+
+Se a implantação falhar, use os logs. Não altere chaves nem remova o banco para tentar resolver erros. A revisão não fez commits nem alterou seu serviço online.

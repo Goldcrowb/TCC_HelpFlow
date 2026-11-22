@@ -6,6 +6,7 @@ import { RepositorioChamadoMemoria } from './RepositorioChamadoMemoria';
 import { RepositorioChamadoSupabase, criarClienteSupabase } from './RepositorioChamadoSupabase';
 
 export function criarRepositorioChamado(): RepositorioChamado {
+    if (process.env.NODE_ENV === 'test') return new RepositorioChamadoMemoria();
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return new RepositorioChamadoSupabase(criarClienteSupabase());
     }
@@ -16,6 +17,7 @@ export function criarRepositorioChamado(): RepositorioChamado {
 }
 
 export function criarRepositorioUsuario(): RepositorioUsuario {
+    if (process.env.NODE_ENV === 'test') return new RepositorioUsuarioMemoria();
     if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         return new RepositorioUsuarioSupabase(criarClienteSupabase());
     }

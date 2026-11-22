@@ -51,3 +51,15 @@ describe('RepositorioChamadoMemoria', () => {
         expect(await repositorio.salvar(tecnicoB!)).toBe(false);
     });
 });
+
+test('aceita reenvio idêntico, mas recusa reuso do ID com outro conteúdo', async () => {
+    const repositorio = new RepositorioChamadoMemoria();
+    await repositorio.salvar(new Chamado('CH-107', 'CLI-01', 'Chamado idempotente', 'Descrição suficiente para teste.', CategoriaChamado.OUTROS));
+    await repositorio.salvar(new Chamado('CH-108', 'CLI-01', 'Outro chamado', 'Descrição suficiente para teste.', CategoriaChamado.OUTROS));
+    const mensagem = new Mensagem('MSG-107', 'CLI-01', 'Mensagem original', new Date());
+    expect(await repositorio.adicionarMensagem('CH-107', mensagem)).toBe(true);
+    expect(await repositorio.adicionarMensagem('CH-107', mensagem)).toBe(true);
+    expect(await repositorio.adicionarMensagem('CH-108', mensagem)).toBe(false);
+    expect(await repositorio.adicionarMensagem('CH-107', new Mensagem('MSG-107','CLI-01','Conteúdo diferente',new Date()))).toBe(false);
+    expect(await repositorio.listarMensagens('CH-107')).toHaveLength(1);
+});

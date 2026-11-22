@@ -15,3 +15,4 @@ create table if not exists public.usuarios (
 create index if not exists idx_usuarios_fila on public.usuarios(perfil, situacao, criado_em);
 alter table public.usuarios enable row level security;
 revoke all on table public.usuarios from anon, authenticated;
+grant select, insert, update, delete on table public.usuarios to service_role;

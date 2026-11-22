@@ -1,116 +1,114 @@
-# HelpFlow — Sistema de chamados de suporte técnico
+# HelpFlow — Central de suporte técnico
 
-**Versão:** 2.1.0  
-**Situação:** cadastro e aprovação implementados; 32 testes automatizados executados localmente. A migração do banco e a verificação completa no serviço publicado ainda precisam ser realizadas.
+**Versão 2.2.0 | Engenharia de Software — UNIASSELVI | Novembro de 2026**
 
-O HelpFlow foi desenvolvido para registrar e acompanhar solicitações de suporte técnico. O cliente pode abrir chamados e acompanhar as respostas. O técnico consulta a fila, assume solicitações e registra o atendimento. A interface utiliza **React, TypeScript e Vite**; a API foi feita com **Node.js e Express**. O armazenamento pode ser realizado no **PostgreSQL do Supabase**.
+O HelpFlow organiza solicitações de suporte em um único sistema. Clientes registram problemas; técnicos acompanham a fila, assumem chamados, registram mensagens, transferem atendimentos e alteram o status. O primeiro técnico pode gerenciar contas. O projeto foi desenvolvido para avaliação acadêmica, não para uso comercial com dados reais.
 
-## Funcionalidades implementadas
+## Funcionalidades
 
-- Cadastro público para **cliente** (ativo imediatamente) e solicitação de **técnico** (aguarda aprovação). Conta de técnico já autorizado pode aprovar ou recusar pedidos. Sessão assinada em cookie HttpOnly.
-- Cliente abre chamados com título, descrição, categoria e data/hora automáticas, consulta somente os próprios chamados e conversa no histórico.
-- Técnico visualiza a fila geral de chamados abertos e sem responsável, assume um chamado com controle de versão, acessa **Meus atendimentos**, responde mensagens e altera o status para **Aberto**, **Em Andamento** ou **Resolvido**.
-- Chamados, mensagens e contas cadastradas persistem no PostgreSQL quando o servidor recebe a configuração do Supabase. Senhas novas são armazenadas com hash `scrypt` e sal individual.
-- Funcionamento offline limitado: o aplicativo instalado/visitado pode abrir a interface em cache; criação de chamados e envio de mensagens ficam em fila local e são enviados na volta da conexão, em ordem, com IDs que evitam duplicação. **Atribuição e mudança de status exigem internet.**
-- Interface responsiva, pesquisa e filtros, indicadores, tela de detalhes e mensagens datadas.
-- API integrada a testes automatizados: valida autenticação, autorização, idempotência, concorrência e regras de negócio.
+- Cadastro de cliente com acesso imediato e cadastro de técnico sujeito a aprovação ou recusa por técnico ativo.
+- Login por e-mail e senha, sessão assinada e painéis separados por perfil.
+- Chamados com título, descrição, categoria, horário de abertura e status (Aberto, Em Andamento, Resolvido).
+- Cliente consulta os próprios chamados; técnicos consultam fila e seus atendimentos. É possível assumir pela fila ou pelos detalhes.
+- Transferência direta para outro técnico aprovado, sem apagar o histórico. Apenas o responsável pode transferir; chamado resolvido não pode ser transferido.
+- Filtros de situação e pesquisa. Em Meus atendimentos, o filtro inicial mostra os chamados em aberto (inclui Em Andamento); há também Resolvidos e Todos.
+- Histórico de mensagens, com autor identificado pelo papel na conversa e data/hora registrada pelo servidor.
+- Primeiro técnico (`TEC-01`) lista e exclui outros clientes e técnicos. Sua própria conta é protegida; técnicos com atendimentos em aberto precisam transferi-los ou resolvê-los. Chamados e mensagens permanecem no banco.
+- Fila offline limitada a novos chamados e mensagens, usando armazenamento do navegador. Atribuição, transferência, status, cadastro e gestão de usuários exigem conexão. A confirmação no banco ocorre após sincronização; o horário de envio é o do servidor.
 
-> **Ambiente local:** as quatro contas antigas de demonstração com senha `123456` só existem quando se utiliza o repositório em memória. **No Render, a versão 2.1 usa usuários salvos no Supabase**, sem manter essas senhas públicas. Antes de publicar, configure o primeiro técnico aprovado conforme `docs/11_cadastro_e_aprovacao.md`.
+## Executar localmente
 
-## Como executar no computador
-
-1. Instale **Node.js 22** e npm.
-2. Abra a pasta `TCC_HelpFlow` no VS Code/terminal.
-3. Execute:
+1. Instale Node.js 22 com npm e extraia o projeto em uma pasta gravável.
+2. Abra a pasta que contém `package.json` no VS Code. Sem `.env` e sem variáveis de banco, o projeto usa memória para demonstração.
+3. Rode no terminal:
 
 ```bash
-npm ci
+npm ci --include=dev
 npm run dev
 ```
 
-4. Acesse **http://localhost:5173**. O Vite encaminha `/api` para **http://localhost:3000**.
-5. Contas de demonstração:
+Acesse http://localhost:5173. API: http://localhost:3000/api/saude. No Windows, `iniciar-local.bat` executa a instalação e inicia o projeto. Em PowerShell com scripts bloqueados, use `npm.cmd` em vez de `npm`.
 
-| Perfil | E-mail | Senha |
+| Conta local | E-mail | Senha de demonstração |
 | --- | --- | --- |
-| Cliente | `cliente@helpflow.local` | `123456` |
-| Cliente 2 | `cliente2@helpflow.local` | `123456` |
-| Técnico | `tecnico@helpflow.local` | `123456` |
-| Técnico 2 | `tecnico2@helpflow.local` | `123456` |
+| Cliente 1 | cliente@helpflow.local | 123456 |
+| Cliente 2 | cliente2@helpflow.local | 123456 |
+| Técnico inicial | tecnico@helpflow.local | 123456 |
+| Técnico 2 | tecnico2@helpflow.local | 123456 |
 
-**Sem Supabase, contas e chamados são temporários.** Em banco novo execute `database.sql`; para atualizar o banco que já está funcionando, execute `scripts/migracao_cadastro.sql` antes do deploy. Configure as variáveis em um ambiente seguro no servidor.
+Essas contas existem somente em modo memória, sem banco. O servidor perde os dados de memória ao reiniciar. Não use essas credenciais na hospedagem; crie contas fictícias próprias para avaliar o sistema online.
 
-## Comandos
+## Verificar o projeto
 
 ```bash
-npm ci                  # instalar dependências conforme package-lock
-npm run dev             # API (3000) e site (5173)
-npm run check           # checar TypeScript do servidor e dos módulos de API/filas
-npm test                # testes unitários e integração HTTP
-npm run build           # gera dist/server e dist/web
-npm start               # hospeda API e site juntos em http://localhost:3000
-npm run test:build      # confere a API e a página após compilar
+npm run check       # servidor e módulos API/fila do navegador
+npm test            # testes de unidade e integração HTTP em memória
+npm run build       # compila servidor + interface
+npm run test:build  # verifica página inicial e rota de saúde após build
+npm start           # inicia a versão compilada: http://localhost:3000
+npm run medir:algoritmos # comparação da ordenação em memória
 ```
 
-**Para testar a versão de produção localmente:** `npm run build` seguido de `npm start`, sem configurar `NODE_ENV=production` se estiver sem banco. Em produção real, o servidor exige Supabase configurado e `SESSION_SECRET` com 32 caracteres ou mais.
+Feche o `npm run dev` antes de rodar `npm start` (mesma porta 3000). `npm run check` não verifica estaticamente todos os componentes JSX; eles são compilados pelo Vite. Os testes usam memória mesmo que variáveis Supabase estejam definidas. Resultado local de 18/11/2026: 40/40 testes, 7 arquivos, 2,14 s; checagens e build aprovados. Registros em `docs/evidencias/`.
 
-## Publicação gratuita
+## Banco Supabase e Render
 
-Arquivos preparados para **Render Free + Supabase Free**: `render.yaml`, `database.sql`, `scripts/migracao_cadastro.sql`, `.node-version` e `.env.example`. **Execute a migração SQL e configure o técnico inicial no Render antes do commit.**
+O sistema usa PostgreSQL através do Supabase; a chave privilegiada fica apenas no servidor Express. Para instalar em banco novo, execute `database.sql` no SQL Editor. Para o banco HelpFlow existente, faça backup, execute `database.sql` (estrutura aditiva) e depois `scripts/verificar_banco.sql`. O arquivo completo inclui as migrações de cadastro e gerenciamento; as versões separadas permanecem em `scripts/` para referência. Não execute scripts de carga/limpeza em produção.
 
-**Não basta enviar este ZIP para o Render:** publique os arquivos do projeto em um repositório GitHub e conecte-o no Render. Instruções passo a passo em [docs/05_manual_de_instalacao.md](docs/05_manual_de_instalacao.md).
+No Render, mantenha o Web Service existente conectado à branch `main` do GitHub. Configuração indicada:
 
-A Render hiberna a instância gratuita após 15 minutos sem acesso; ela pode levar cerca de um minuto para iniciar novamente. O Supabase gratuito pode pausar projetos por baixa atividade ao longo de 7 dias. **Teste e acorde o sistema antes da apresentação**, mantendo uma cópia local demonstrável como contingência.
+| Configuração | Valor |
+| --- | --- |
+| Node | 22 (`.node-version`) |
+| Build | `npm ci --include=dev && npm run build` |
+| Start | `npm start` |
+| Health check | `/api/saude` |
+| Plano | Free (sujeito aos limites do serviço) |
 
-## Arquitetura
+Variáveis em Environment (não enviar segredos ao GitHub):
+
+| Nome | Valor |
+| --- | --- |
+| `NODE_ENV` | production |
+| `SUPABASE_URL` | URL base do projeto, sem `/rest/v1` |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave privilegiada do mesmo projeto, mantida no backend |
+| `SESSION_SECRET` | segredo aleatório de pelo menos 32 caracteres |
+| `TECNICO_INICIAL_EMAIL` | e-mail da conta técnica inicial |
+| `TECNICO_INICIAL_SENHA` | senha exclusiva de pelo menos 12 caracteres |
+| `TECNICO_INICIAL_NOME` | nome de exibição (opcional) |
+
+O técnico inicial recebe o ID reservado `TEC-01`. Se a conta já existe, o servidor não redefine a senha. Alterar a variável de senha não é recuperação de senha. Não modifique o ID ou o e-mail do administrador sem planejamento. Para teste local com Supabase, copie `.env.example` para `.env`, preencha os valores e use `npm run dev`; esse arquivo é ignorado pelo Git. Em produção, use Environment do Render.
+
+Após o commit e push, acompanhe o deploy, confirme `/api/saude` e teste com contas fictícias de cliente e técnico. Se estiver suspenso, retome o serviço. Serviços gratuitos podem hibernar ou pausar; teste no dia anterior e novamente antes da defesa. O link público real está no painel do Render.
+
+Se excluir usuário retornar erro, rode `scripts/verificar_banco.sql` e confira a função `excluir_usuario_helpflow`, a permissão de execução do `service_role`, a conta inicial e o trigger. Se continuar, consulte os logs do Render. A exclusão em Supabase online ainda precisa ser confirmada após a correção; não delete tabelas nem desative RLS.
+
+## Estrutura do repositório
 
 ```text
-Browser React / PWA (src/apresentacao)
-         | HTTP /api, cookie de sessão
-Express + serviços (src/servicos + src/aplicacao)
-         | RepositorioChamado (interface em src/dominio)
-Repositorio em memória / Supabase (src/persistencia)
-         | REST segura com chave no servidor
-PostgreSQL: usuarios, chamados, mensagens e coluna versao
+src/
+  apresentacao/   telas React, chamadas à API e fila offline
+  servicos/       rotas HTTP e composição do servidor
+  aplicacao/      casos de uso e controle de permissões
+  dominio/        entidades, regras e interfaces dos repositórios
+  persistencia/   repositórios em memória e Supabase
+public/          arquivos estáticos e service worker
+scripts/         migrações e verificações reproduzíveis
+docs/            dossiê D1–D9, manual, API, evidências e diagramas
+apresentacao/    slides e roteiro da defesa
+referencias/     termo de referência original e materiais do professor
 ```
 
-`dist/`, `node_modules/` e `.env` não devem ser enviados ao GitHub nem incluídos no ZIP final. O `npm ci` instala dependências, e `npm run build` as compila a partir do código-fonte.
+A apresentação e os serviços chamam o domínio através dos casos de uso. A persistência implementa as interfaces do domínio. O domínio não depende de React, Express ou Supabase. O padrão Repository permite testar o sistema sem banco. Os princípios SOLID aparecem principalmente na responsabilidade única e inversão de dependência; não se afirma adesão integral a todos eles.
 
-## Organização da documentação
+## Documentação e entrega
 
-| Arquivo | Conteúdo |
-| --- | --- |
-| `docs/01_requisitos_e_rastreabilidade.md` | RF, RNF, CA-01 a CA-07 e matriz de vinculação |
-| `docs/02_arquitetura_do_sistema.md` | camadas, domínio, persistência, concorrência e segurança |
-| `docs/Documento_de_Arquitetura_HelpFlow_v2_1.docx` | versão atual da arquitetura com cadastro e aprovação, em Word |
-| `docs/Documento_de_Arquitetura_HelpFlow_v2.docx` | documento anterior, preservado para histórico |
-| `docs/03_api_e_sincronizacao.md` | rotas HTTP, mensagens, falhas e protocolo de sincronização |
-| `docs/04_plano_de_testes.md` | casos executados, resultados e medições pendentes |
-| `docs/05_manual_de_instalacao.md` | uso, instalação, Render, Supabase e apresentação |
-| `docs/06_acompanhamento_das_fases.md` | aderência às orientações das três fases |
-| `docs/07_roteiro_da_apresentacao.md` | apresentação de 12 minutos e perguntas |
-| `docs/08_validacoes_pendentes.md` | o que precisa ser verificado fora deste ambiente |
-| `docs/09_registro_de_alteracoes.md` | melhorias e justificativas |
-| `docs/10_avaliacao_de_desempenho.md` | CA-03: preparação de 500 chamados/50 mensagens |
-| `docs/11_cadastro_e_aprovacao.md` | implantação e testes do cadastro de clientes e aprovação de técnicos |
-| `referencias/` | documento de arquitetura v1.3 e materiais de orientação originais |
-| `apresentacao/Apresentacao_HelpFlow_TCC.pptx` | slides editáveis para a defesa |
+- [Dossiê único D1–D9 (PDF)](docs/HelpFlow_EntregaFinal_v2.2.pdf) — índice e páginas numeradas.
+- [Versão editável (Word)](docs/HelpFlow_EntregaFinal_v2.2.docx).
+- [Manual rápido](docs/manual.md), [API](docs/api.md), [pendências e evidências](docs/pendencias.md).
+- [Apresentação da defesa](apresentacao/HelpFlow_Defesa.pptx) e [roteiro](apresentacao/roteiro.md).
+- Código original: https://github.com/Goldcrowb/TCC_HelpFlow. Confirmar acesso do professor e atualizar este repositório com a versão final.
 
-## Limitações da versão
+O termo inicial é preservado em `referencias/`. Dados de entrevista, teste por terceiro e validações na nuvem não foram inventados. A comparação local de algoritmos não prova o CA-03 (500 chamados exibidos em até 2 s e 50 mensagens em até 3 s). O CA-06 exige instalação por outra pessoa. O alerta anterior de oito vulnerabilidades do npm ainda exige diagnóstico atualizado e correção quando aplicável; `npm audit` não consultou o registro nesta revisão por falha de rede. Evite `npm audit fix --force` sem avaliar mudanças de versão.
 
-Esta versão foi desenvolvida para a apresentação do TCC e não está pronta para uso comercial. Inclui cadastro público e senhas individualizadas com hash, mas ainda não dispõe de recuperação de senha por e-mail, confirmação automática de e-mail, notificações, IA, chat em tempo real, anexos ou auditoria corporativa. O aplicativo continua exigindo conexão para login e para confirmar no banco as operações em fila. O CA-03 só será comprovado com medição no ambiente online com a carga exigida; o CA-06 só será comprovado quando uma pessoa externa instalar seguindo o manual.
-
-## Atualização para o cadastro de usuários
-
-No Supabase já em uso, rode **`scripts/migracao_cadastro.sql`**. No Render, inclua as variáveis `TECNICO_INICIAL_EMAIL` e `TECNICO_INICIAL_SENHA` (senha exclusiva com pelo menos 12 caracteres), além das variáveis existentes. O técnico inicial é criado no primeiro início com essas configurações. O procedimento detalhado está em [docs/11_cadastro_e_aprovacao.md](docs/11_cadastro_e_aprovacao.md).
-
-Se houver chamados antigos de contas demonstrativas, os registros continuam no banco, mas a associação ao cliente antigo não é transferida automaticamente para um cadastro novo. Mantenha cópia do banco antes de migrar.
-
-## Dados e segurança
-
-- Nunca coloque `TECNICO_INICIAL_SENHA`, `SESSION_SECRET` ou `SUPABASE_SERVICE_ROLE_KEY` no navegador, HTML, código de interface, arquivo enviado ao GitHub ou `VITE_*`.
-- API e SPA devem ficar no **mesmo domínio**, para cookie HttpOnly funcionar com SameSite Strict.
-- As tabelas PostgreSQL usam RLS habilitada sem acesso público, e o backend usa chave server-side.
-- Faça uma cópia dos dados de demonstração se forem necessários posteriormente; operações offline ainda não enviadas existem apenas no navegador.
-
-Os dados de autoria e identificação do trabalho devem ser preenchidos de acordo com as orientações da instituição. O documento de arquitetura original foi mantido na pasta `referencias/`.
+Não envie `node_modules/`, `dist/`, `.env`, dados reais, senhas ou chaves. O pacote entregue contém código-fonte instalável por npm, não um executável autônomo. Não foram alteradas contas nem dados do Supabase nesta revisão.

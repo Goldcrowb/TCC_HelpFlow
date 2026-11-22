@@ -50,3 +50,4 @@ create trigger validar_tecnico_chamado_helpflow
 before insert or update of tecnico_id, status on public.chamados
 for each row execute function public.validar_tecnico_chamado_helpflow();
 commit;
+notify pgrst, 'reload schema';

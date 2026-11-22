@@ -1,11 +1,11 @@
 {
   "name": "helpflow-tcc",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "description": "HelpFlow - sistema centralizado de atendimento de suporte técnico",
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
-    "dev:api": "tsx src/servicos/server.ts",
+    "dev:api": "node --env-file-if-exists=.env --import tsx src/servicos/server.ts",
     "dev:web": "vite",
     "build": "tsc -p tsconfig.server.json && vite build",
     "start": "node dist/server/servicos/server.js",
@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "test:api": "vitest run src/servicos/server.test.ts",
-    "test:build": "node scripts/verificar_build.mjs"
+    "test:build": "node scripts/verificar_build.mjs",
+    "medir:algoritmos": "node scripts/medir_ordenacao.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

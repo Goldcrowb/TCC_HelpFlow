@@ -17,6 +17,9 @@ export class Mensagem {
         if (!conteudo || conteudo.trim().length === 0) {
             throw new DadoInvalidoException('O conteúdo da mensagem não pode estar vazio.');
         }
+        if (conteudo.trim().length > 4000) {
+            throw new DadoInvalidoException('A mensagem deve ter até 4000 caracteres.');
+        }
         if (!dataEnvio || Number.isNaN(dataEnvio.getTime()) || dataEnvio.getTime() > Date.now()) {
             throw new DadoInvalidoException('A data de envio é inválida ou está no futuro.');
         }

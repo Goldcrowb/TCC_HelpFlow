@@ -22,7 +22,7 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
             return false;
         }
 
-        this.dados[index] = chamado;
+        this.dados[index] = this.clonarChamado(chamado);
         return true;
     }
 
@@ -58,7 +58,11 @@ export class RepositorioChamadoMemoria implements RepositorioChamado {
         }
 
         const lista = this.mensagens.get(chamadoId) ?? [];
-        if (lista.some((item) => item.getId() === mensagem.getId())) return true;
+        for (const [id, mensagens] of this.mensagens) {
+            const existente = mensagens.find(item => item.getId() === mensagem.getId());
+            if (!existente) continue;
+            return id === chamadoId && existente.getAutorId() === mensagem.getAutorId() && existente.getConteudo() === mensagem.getConteudo();
+        }
         lista.push(mensagem);
         this.mensagens.set(chamadoId, lista);
         return true;

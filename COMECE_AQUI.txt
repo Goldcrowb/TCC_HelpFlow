@@ -1,28 +1,9 @@
-HELPFLOW — SISTEMA DE CHAMADOS DE SUPORTE TÉCNICO
-Versão 2.1.0 | TCC de Engenharia de Software
+HELPFLOW 2.2.0 — ENTREGA FINAL
 
-1. Para conhecer o projeto, abra README.md.
-2. Para executar no Windows, instale Node.js 22 e use INICIAR-LOCAL.bat.
-   Pelo terminal: npm ci e, em seguida, npm run dev.
-3. Acesse http://localhost:5173 e utilize as contas de teste:
-   Cliente: cliente@helpflow.local | Senha: 123456
-   Técnico: tecnico@helpflow.local | Senha: 123456
-4. A configuração de banco e hospedagem está em docs/05_manual_de_instalacao.md.
-5. A apresentação está em apresentacao/Apresentacao_HelpFlow_TCC.pptx.
-6. Os testes e as verificações restantes estão nos documentos 04 e 08.
+1. Leia README.md. Para testar no computador, instale Node.js 22, execute npm ci --include=dev e npm run dev. Abra http://localhost:5173. As contas locais estão no README.
+2. Para atualizar o site já hospedado, leia atualizar-github.txt. Preserve a pasta .git e faça backup do Supabase. Execute database.sql e scripts/verificar_banco.sql antes de enviar a atualização.
+3. Dossiê final: docs/HelpFlow_EntregaFinal_v2.2.pdf (Word editável também disponível).
+4. Slides: apresentacao/HelpFlow_Defesa.pptx e roteiro.md.
+5. Evidências: docs/evidencias. Confira docs/pendencias.md antes da entrega e obtenha os registros que somente podem ser feitos com acesso ao ambiente real e à instituição.
 
-ATENÇÃO
-O projeto não foi publicado automaticamente. Para disponibilizá-lo na
-internet, é necessário configurar o Supabase e criar o serviço no Render.
-Os testes locais não substituem a avaliação de desempenho na hospedagem.
-Não use dados pessoais reais nas contas públicas de demonstração.
-
-
-ATUALIZAÇÃO DO CADASTRO — LEIA ANTES DE ENVIAR AO GITHUB
-1. No Supabase, execute scripts/migracao_cadastro.sql no SQL Editor.
-2. No Render, configure TECNICO_INICIAL_EMAIL e TECNICO_INICIAL_SENHA
-   (e opcionalmente TECNICO_INICIAL_NOME). Não coloque senhas no GitHub.
-3. Só depois faça o commit e deploy da versão 2.1.
-4. A versão online deixa de usar contas de demonstração com senha 123456.
-   O primeiro técnico entrará com a senha que você definir no Render.
-Guia: docs/11_cadastro_e_aprovacao.md
+Nunca coloque chaves do Supabase, senha real ou .env no GitHub. Não copie node_modules ou dist.

@@ -33,3 +33,7 @@ describe('Chamado', () => {
         expect(chamado.getStatus()).toBe(StatusChamado.EM_ANDAMENTO);
     });
 });
+
+test('rejeita título maior que o limite do banco', () => {
+    expect(() => new Chamado('CH-007', 'CLI-01', 'x'.repeat(121), 'Descrição válida para teste.', CategoriaChamado.OUTROS)).toThrow('120');
+});

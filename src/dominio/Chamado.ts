@@ -48,6 +48,9 @@ export class Chamado {
         if (!titulo || titulo.trim().length < 5) {
             throw new DadoInvalidoException('O título do chamado deve ter pelo menos 5 caracteres.');
         }
+        if (titulo.trim().length > 120) {
+            throw new DadoInvalidoException('O título deve ter até 120 caracteres.');
+        }
         if (!descricao || descricao.trim().length < 10) {
             throw new DadoInvalidoException('A descrição precisa ser mais detalhada.');
         }

@@ -32,6 +32,7 @@ alter table public.chamados enable row level security;
 alter table public.mensagens enable row level security;
 revoke all on table public.chamados from anon, authenticated;
 revoke all on table public.mensagens from anon, authenticated;
+grant select, insert, update, delete on table public.chamados, public.mensagens to service_role;
 
 -- Cadastro de usuários (migração aditiva: preserva os chamados já existentes).
 -- Executar novamente o arquivo completo é seguro com as tabelas já criadas.
@@ -50,6 +51,7 @@ create table if not exists public.usuarios (
 create index if not exists idx_usuarios_fila on public.usuarios(perfil, situacao, criado_em);
 alter table public.usuarios enable row level security;
 revoke all on table public.usuarios from anon, authenticated;
+grant select, insert, update, delete on table public.usuarios to service_role;
 
 -- Atualização aditiva do HelpFlow: executar antes de publicar a nova API.
 -- Não apaga dados, nem altera os identificadores dos usuários existentes.
@@ -103,3 +105,4 @@ create trigger validar_tecnico_chamado_helpflow
 before insert or update of tecnico_id, status on public.chamados
 for each row execute function public.validar_tecnico_chamado_helpflow();
 commit;
+notify pgrst, 'reload schema';

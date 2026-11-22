@@ -5,14 +5,19 @@ if (!destino || !/^https?:\/\//.test(destino)) {
   process.exit(1);
 }
 const base = destino.replace(/\/$/, '');
-const senha = process.env.HELPFLOW_TEST_PASSWORD || '123456';
+const email = process.env.HELPFLOW_TEST_EMAIL;
+const senha = process.env.HELPFLOW_TEST_PASSWORD;
+if (!email || !senha) {
+  console.error('Defina HELPFLOW_TEST_EMAIL e HELPFLOW_TEST_PASSWORD de um técnico ativo do ambiente de teste.');
+  process.exit(1);
+}
 async function obter(rota, opcoes = {}) {
   const resp = await fetch(base + rota, { ...opcoes, signal: AbortSignal.timeout(90000) });
   if (!resp.ok) throw Error(`${rota} retornou ${resp.status}: ${await resp.text()}`);
   return resp;
 }
 try {
-  const login = await obter('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'tecnico@helpflow.local', senha }) });
+  const login = await obter('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, senha }) });
   const cookie = login.headers.get('set-cookie')?.split(';')[0];
   if (!cookie) throw Error('Cookie de login não retornado.');
   const relatorio = [];
@@ -26,7 +31,8 @@ try {
   }
   console.table(relatorio);
   if (relatorio[0].registros !== 500 || relatorio[1].registros !== 50) {
-    console.warn('AVISO: a carga não corresponde a 500/50. Configure os dados antes de declarar o CA-03 aprovado.');
+    console.warn('AVISO: a carga não corresponde a 500/50. Confira os dados sem declarar o CA-03 aprovado.');
+    process.exitCode = 2;
   }
   console.log('Esta medição cobre HTTP + interpretação JSON, não o tempo de exibição da interface.');
 } catch (erro) { console.error('Medição falhou:', erro.message); process.exitCode = 1; }

@@ -1,0 +1,11 @@
+digraph G {
+ graph [rankdir=TB, bgcolor="white", nodesep=.36, ranksep=.38]; node [shape=box, style="rounded,filled", fillcolor="#E9F4F3", color="#147B78", fontname="Arial", fontsize=13, margin=".15,.10"]; edge [color="#47616A", fontname="Arial", fontsize=10];
+ a [label="Apresentação\nReact / Vite"];
+ s [label="Serviços HTTP\nExpress"];
+ ap [label="Aplicação\nChamadoService · CadastroService\nAutenticacaoService · GerenciamentoUsuarioService"];
+ d [label="Domínio\nChamado · Mensagem · Usuario\nInterfaces de repositório",fillcolor="#D6EDE8"];
+ p [label="Persistência\nRepositórios Memória / Supabase"];
+ a -> s [label="HTTP / JSON"]; s -> ap; ap -> d [label="regras e contratos"]; p -> d [label="implementa contratos"];
+ s -> p [style=dashed,label="monta dependências"];
+ {rank=same;ap;p}
+}

@@ -1,0 +1,7 @@
+digraph G {
+ graph [rankdir=TB,bgcolor="white",nodesep=.25,ranksep=.45]; node [shape=record,style=filled,fillcolor="#E9F4F3",color="#147B78",fontname="Arial",fontsize=12]; edge [fontname="Arial",fontsize=10,color="#47616A"];
+ u[label="{Usuario|- id; nome; email\l- senha; perfil; situacao\l|+ getters()\l}"];
+ c[label="{Chamado|- id; clienteId; titulo\l- descricao; categoria; status\l- tecnicoResponsavelId; versao\l|+ atribuirTecnico()\l+ transferirTecnico()\l+ alterarStatus()\l}"];
+ m[label="{Mensagem|- id; autorId; conteudo\l- dataEnvio\l|+ getters()\l}"];
+ u -> c [label="cliente / técnico",style=dashed]; c -> m [label="histórico",style=dashed]; u -> m [label="autor",style=dashed];
+}

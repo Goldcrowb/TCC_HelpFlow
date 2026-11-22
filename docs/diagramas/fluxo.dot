@@ -1,0 +1,8 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="white",nodesep=.20,ranksep=.25]; node [shape=box,style="rounded,filled",fillcolor="#E9F4F3",color="#147B78",fontname="Arial",fontsize=11]; edge [fontname="Arial",fontsize=9,color="#47616A"];
+ b[label="Navegador\nReact"];
+ r[label="Render\nExpress / Serviços"];
+ s[label="Supabase\nPostgreSQL"];
+ l[label="Fila local\nlocalStorage"];
+ b -> r [label="HTTPS / JSON"]; r -> s [label="consulta/gravação"]; s -> r [label="dados",constraint=false]; r -> b [label="resposta",constraint=false]; b -> l [label="offline"]; l -> b [label="reenvio",constraint=false];
+}

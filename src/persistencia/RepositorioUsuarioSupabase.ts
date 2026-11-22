@@ -39,7 +39,14 @@ export class RepositorioUsuarioSupabase implements RepositorioUsuario {
     async excluirUsuario(id: string): Promise<ResultadoExclusao> {
         if (id === ID_TECNICO_INICIAL) return 'protegido';
         const { data, error } = await this.cliente.rpc('excluir_usuario_helpflow', { usuario_id: id });
-        if (error) throw new Error(`Não foi possível excluir o usuário: ${error.message}`);
+        if (error) {
+            console.error('Exclusão de usuário no Supabase:', error.code, error.message);
+            if (error.code === 'PGRST202' || error.code === '42883' || error.code === '42501') {
+                throw new DadoInvalidoException('Exclusão indisponível. Confira a migração de gerenciamento de usuários no Supabase.');
+            }
+            if (error.code === '23503') throw new DadoInvalidoException('O banco possui vínculos que impedem a exclusão. Confira as restrições antes de tentar novamente.');
+            throw new Error('Não foi possível excluir o usuário no banco.');
+        }
         if (data !== 'excluido' && data !== 'ausente' && data !== 'protegido' && data !== 'pendencias') {
             throw new Error('Resposta inesperada ao excluir usuário.');
         }

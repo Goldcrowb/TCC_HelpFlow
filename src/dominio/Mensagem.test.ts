@@ -18,3 +18,7 @@ describe('Mensagem', () => {
         expect(() => new Mensagem('MSG-003', 'CLI-01', 'Mensagem válida', futuro)).toThrow(DadoInvalidoException);
     });
 });
+
+test('rejeita mensagens acima de 4000 caracteres', () => {
+    expect(() => new Mensagem('MSG-004', 'CLI-01', 'a'.repeat(4001), new Date())).toThrow('4000');
+});

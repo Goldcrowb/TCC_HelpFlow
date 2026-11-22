@@ -17,8 +17,8 @@ import { criarRepositorioUsuario } from '../persistencia/indice';
 import { PerfilUsuario as Perfil } from '../dominio/PerfilUsuario';
 import { criarRepositorioChamado } from '../persistencia/indice';
 
-// Aplicação demonstrativa: contas cadastradas previamente; os chamados e as mensagens
-// ficam no banco compartilhado quando as credenciais do Supabase estão configuradas.
+// No ambiente local, as contas de demonstração ficam em memória.
+// Com Supabase configurado, usuários, chamados e mensagens ficam no banco.
 const producao = process.env.NODE_ENV === 'production';
 if (producao && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32)) {
     throw new Error('Defina SESSION_SECRET com pelo menos 32 caracteres na hospedagem.');
@@ -119,7 +119,7 @@ function limitarLogin(req: Request): void {
     if (atual.contador > 30) throw new ErroHttp(429, 'Muitas tentativas de acesso. Tente novamente mais tarde.');
 }
 
-app.get('/api/saude', (_req, res) => res.json({ status: 'ok', projeto: 'HelpFlow', versao: '2.1.0' }));
+app.get('/api/saude', (_req, res) => res.json({ status: 'ok', projeto: 'HelpFlow', versao: '2.2.0' }));
 
 // Cadastro público: cliente entra imediatamente; técnico aguarda análise.
 const tentativasCadastro = new Map<string, { inicio: number; contador: number }>();
@@ -318,8 +318,8 @@ async function configurarTecnicoInicial(): Promise<void> {
     if (senha.length < 12) throw new Error('TECNICO_INICIAL_SENHA precisa ter pelo menos 12 caracteres.');
     const existente = await repositorioUsuario.buscarPorEmail(email);
     if (existente) {
-        if (existente.getPerfil() !== Perfil.TECNICO || existente.getSituacao() !== 'ativo') {
-            throw new Error('TECNICO_INICIAL_EMAIL já pertence a uma conta sem permissão de técnico. Escolha outro e-mail.');
+        if (existente.getId() !== ID_TECNICO_INICIAL || existente.getPerfil() !== Perfil.TECNICO || existente.getSituacao() !== 'ativo') {
+            throw new Error('TECNICO_INICIAL_EMAIL precisa corresponder à conta técnica inicial (TEC-01). Confira a configuração do banco.');
         }
         return;
     }

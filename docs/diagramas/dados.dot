@@ -1,0 +1,7 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="white",nodesep=.28,ranksep=.42]; node [shape=record,style=filled,fillcolor="#E9F4F3",color="#147B78",fontname="Arial",fontsize=12]; edge [fontname="Arial",fontsize=10,color="#47616A"];
+ u[label="{usuarios|id (PK)\lnome; email (UNIQUE)\lsenha_hash\lperfil; situacao\lcriado_em; avaliação\l}"];
+ c[label="{chamados|id (PK)\lcliente_id; tecnico_id\ltitulo; descricao; categoria\lstatus; data_abertura\lversao\l}"];
+ m[label="{mensagens|id (PK)\lchamado_id (FK)\lautor_id; conteudo\ldata_envio\l}"];
+ u -> c [style=dashed,label="1:N (lógico)"]; c -> m [label="1:N (FK)"]; u -> m [style=dashed,label="autor (lógico)",constraint=false];
+}

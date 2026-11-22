@@ -6,12 +6,12 @@ echo HelpFlow TCC - ambiente local
 echo =========================================
 where node >nul 2>nul
 if errorlevel 1 (
-  echo ERRO: instale Node.js 22 primeiro. Consulte docs\05_manual_de_instalacao.md
+  echo ERRO: instale Node.js 22 primeiro. Consulte docs\manual.md
   pause
   exit /b 1
 )
 echo Instalando dependencias conforme package-lock...
-call npm ci
+call npm ci --include=dev
 if errorlevel 1 (
   echo ERRO na instalacao. Confira internet e Node.js 22.
   pause

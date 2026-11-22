@@ -1,0 +1,50 @@
+Execução local em UTC — versão 2.2.0
+Wed Nov 18 23:16:32 UTC 2026
+v22.16.0
+10.9.2
+Dependências já instaladas: versões conferidas contra package-lock.json; sem conexão com registro npm.
+
+> helpflow-tcc@2.2.0 check
+> tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit
+
+
+> helpflow-tcc@2.2.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /mnt/data/revisao_final/TCC_HelpFlow-main
+
+ ✓ src/apresentacao/offline.test.ts (2 tests) 19ms
+ ✓ src/aplicacao/ChamadoService.test.ts (3 tests) 24ms
+ ✓ src/aplicacao/CadastroService.test.ts (2 tests) 505ms
+   ✓ CadastroService - regras de cadastro > guarda hash em vez de senha e marca técnico como pendente  366ms
+ ✓ src/persistencia/RepositorioChamadoMemoria.test.ts (6 tests) 11ms
+ ✓ src/dominio/Chamado.test.ts (6 tests) 4ms
+ ✓ src/dominio/Mensagem.test.ts (4 tests) 6ms
+ ✓ src/servicos/server.test.ts (17 tests) 1265ms
+   ✓ Cadastro de usuários e aprovação de técnicos > solicitante técnico não acessa antes da aprovação, e técnico autorizado aprova  397ms
+
+ Test Files  7 passed (7)
+      Tests  40 passed (40)
+   Start at  23:16:37
+   Duration  2.14s (transform 534ms, setup 0ms, collect 1.03s, tests 1.83s, environment 2ms, prepare 884ms)
+
+
+> helpflow-tcc@2.2.0 build
+> tsc -p tsconfig.server.json && vite build
+
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 30 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/web/index.html                   0.71 kB │ gzip:  0.40 kB
+dist/web/assets/index-Cu8kQvQI.css   14.50 kB │ gzip:  4.11 kB
+dist/web/assets/index-P1_CGaOk.js   254.52 kB │ gzip: 78.26 kB
+✓ built in 1.54s
+
+> helpflow-tcc@2.2.0 test:build
+> node scripts/verificar_build.mjs
+
+OK: /api/saude retornou HTTP 200.
+OK: página inicial retornou HTTP 200 com a aplicação React.

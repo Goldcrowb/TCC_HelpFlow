@@ -17,7 +17,7 @@ const categorias = ['Hardware', 'Software', 'Rede', 'Acesso', 'Outros'];
 const status = ['Aberto', 'Em Andamento', 'Resolvido'];
 const chaveCache = 'helpflow_usuario_ultimo';
 function mensagemErro(erro: unknown) { return erro instanceof Error ? erro.message : 'Ocorreu uma falha inesperada.'; }
-function formatarData(data: string) { return new Date(data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
+function formatarData(data: string) { return new Date(data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }); }
 function statusClasse(nome: string) { return `status status-${nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')}`; }
 
 function App() {
@@ -98,7 +98,7 @@ function App() {
             {usuario.perfil === 'cliente' ? <PainelCliente usuario={usuario} onError={setErro} atualizacao={atualizacao} /> : <PainelTecnico usuario={usuario} onError={setErro} atualizacao={atualizacao} />}
         </main>
         {erro && <div className="toast error" role="alert">{erro}<button aria-label="Fechar aviso" onClick={() => setErro('')}>×</button></div>}
-        <footer className="footer">HelpFlow · Projeto acadêmico de Engenharia de Software · Versão 2.1</footer>
+        <footer className="footer">HelpFlow · Projeto acadêmico de Engenharia de Software · Versão 2.2</footer>
     </div>;
 }
 
