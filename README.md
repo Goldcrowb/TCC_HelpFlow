@@ -51,6 +51,10 @@ npm run medir:algoritmos # comparação da ordenação em memória
 
 Feche o `npm run dev` antes de rodar `npm start` (mesma porta 3000). `npm run check` não verifica estaticamente todos os componentes JSX; eles são compilados pelo Vite. Os testes usam memória mesmo que variáveis Supabase estejam definidas. Resultado local de 18/11/2026: 40/40 testes, 7 arquivos, 2,14 s; checagens e build aprovados. Registros em `docs/evidencias/`.
 
+## Evidência de desempenho CA-03 (22/11/2026)
+
+Foi utilizada uma instância local do HelpFlow conectada a um projeto Supabase **separado para testes**, com 500 chamados e 50 mensagens. O script HTTP verificou os volumes e registrou 934,23 ms para a fila e 563,62 ms para o histórico. As gravações do Edge indicaram aproximadamente 790 ms até o evento de pintura da fila e 1.090 ms do clique até a pintura do histórico. Esses números são de execuções distintas, não devem ser somados e **não comprovam o desempenho no Render**. A primeira verificação local ficou abaixo das metas; a repetição e validação online continuam pendentes. Consulte `docs/evidencias/ca03_resultados.md`.
+
 ## Banco Supabase e Render
 
 O sistema usa PostgreSQL através do Supabase; a chave privilegiada fica apenas no servidor Express. Para instalar em banco novo, execute `database.sql` no SQL Editor. Para o banco HelpFlow existente, faça backup, execute `database.sql` (estrutura aditiva) e depois `scripts/verificar_banco.sql`. O arquivo completo inclui as migrações de cadastro e gerenciamento; as versões separadas permanecem em `scripts/` para referência. Não execute scripts de carga/limpeza em produção.
@@ -109,6 +113,6 @@ A apresentação e os serviços chamam o domínio através dos casos de uso. A p
 - [Apresentação da defesa](apresentacao/HelpFlow_Defesa.pptx) e [roteiro](apresentacao/roteiro.md).
 - Código original: https://github.com/Goldcrowb/TCC_HelpFlow. Confirmar acesso do professor e atualizar este repositório com a versão final.
 
-O termo inicial é preservado em `referencias/`. Dados de entrevista, teste por terceiro e validações na nuvem não foram inventados. A comparação local de algoritmos não prova o CA-03 (500 chamados exibidos em até 2 s e 50 mensagens em até 3 s). O CA-06 exige instalação por outra pessoa. O alerta anterior de oito vulnerabilidades do npm ainda exige diagnóstico atualizado e correção quando aplicável; `npm audit` não consultou o registro nesta revisão por falha de rede. Evite `npm audit fix --force` sem avaliar mudanças de versão.
+O termo inicial é preservado em `referencias/`. Dados de entrevista, teste por terceiro e validações na nuvem não foram inventados. A comparação local de algoritmos, isoladamente, não prova o CA-03. Em 22/11/2026 foram obtidas medições adicionais em Supabase de teste: 500 chamados (HTTP + JSON 934,23 ms; pintura estimada ~790 ms) e 50 mensagens (HTTP + JSON 563,62 ms; pintura estimada ~1.090 ms), ambas abaixo dos limites nas execuções locais. Os rastros e ressalvas estão em [evidência CA-03](docs/evidencias/ca03_resultados.md). Ainda faltam repetições e validação no ambiente online. O CA-06 exige instalação por outra pessoa. O alerta anterior de oito vulnerabilidades do npm ainda exige diagnóstico atualizado e correção quando aplicável; `npm audit` não consultou o registro nesta revisão por falha de rede. Evite `npm audit fix --force` sem avaliar mudanças de versão.
 
 Não envie `node_modules/`, `dist/`, `.env`, dados reais, senhas ou chaves. O pacote entregue contém código-fonte instalável por npm, não um executável autônomo. Não foram alteradas contas nem dados do Supabase nesta revisão.

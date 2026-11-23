@@ -1,0 +1,9 @@
+HELPFLOW 2.2.0 — ENTREGA FINAL
+
+1. Leia README.md. Para testar no computador, instale Node.js 22, execute npm ci --include=dev e npm run dev. Abra http://localhost:5173. As contas locais estão no README.
+2. Para atualizar o site já hospedado, leia atualizar-github.txt. Preserve a pasta .git e faça backup do Supabase. Execute database.sql e scripts/verificar_banco.sql antes de enviar a atualização.
+3. Dossiê final: docs/HelpFlow_EntregaFinal_v2.2.pdf (Word editável também disponível).
+4. Slides: apresentacao/HelpFlow_Defesa.pptx e roteiro.md.
+5. Evidências: docs/evidencias. Confira docs/pendencias.md antes da entrega e obtenha os registros que somente podem ser feitos com acesso ao ambiente real e à instituição.
+
+Nunca coloque chaves do Supabase, senha real ou .env no GitHub. Não copie node_modules ou dist.
