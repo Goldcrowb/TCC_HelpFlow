@@ -2,117 +2,271 @@
 
 **Versão 2.2.0 | Engenharia de Software — UNIASSELVI | Novembro de 2026**
 
-O HelpFlow organiza solicitações de suporte em um único sistema. Clientes registram problemas; técnicos acompanham a fila, assumem chamados, registram mensagens, transferem atendimentos e alteram o status. O primeiro técnico pode gerenciar contas. O projeto foi desenvolvido para avaliação acadêmica, não para uso comercial com dados reais.
+O HelpFlow é um sistema web para registrar e acompanhar solicitações de suporte técnico. Clientes abrem chamados e trocam mensagens com a equipe. Técnicos visualizam a fila, assumem ou transferem atendimentos e atualizam o status. O primeiro técnico autorizado também pode gerenciar usuários.
 
-## Funcionalidades
+Este é um projeto acadêmico. Para a demonstração, utilize contas e dados fictícios.
 
-- Cadastro de cliente com acesso imediato e cadastro de técnico sujeito a aprovação ou recusa por técnico ativo.
-- Login por e-mail e senha, sessão assinada e painéis separados por perfil.
-- Chamados com título, descrição, categoria, horário de abertura e status (Aberto, Em Andamento, Resolvido).
-- Cliente consulta os próprios chamados; técnicos consultam fila e seus atendimentos. É possível assumir pela fila ou pelos detalhes.
-- Transferência direta para outro técnico aprovado, sem apagar o histórico. Apenas o responsável pode transferir; chamado resolvido não pode ser transferido.
-- Filtros de situação e pesquisa. Em Meus atendimentos, o filtro inicial mostra os chamados em aberto (inclui Em Andamento); há também Resolvidos e Todos.
-- Histórico de mensagens, com autor identificado pelo papel na conversa e data/hora registrada pelo servidor.
-- Primeiro técnico (`TEC-01`) lista e exclui outros clientes e técnicos. Sua própria conta é protegida; técnicos com atendimentos em aberto precisam transferi-los ou resolvê-los. Chamados e mensagens permanecem no banco.
-- Fila offline limitada a novos chamados e mensagens, usando armazenamento do navegador. Atribuição, transferência, status, cadastro e gestão de usuários exigem conexão. A confirmação no banco ocorre após sincronização; o horário de envio é o do servidor.
+## 1. Funcionalidades
 
-## Executar localmente
+- Cadastro de clientes e solicitação de cadastro como técnico, com aprovação ou recusa por um técnico ativo.
+- Login com e-mail e senha; telas separadas por perfil.
+- Abertura de chamados por título, categoria e descrição, com os estados **Aberto**, **Em Andamento** e **Resolvido**.
+- Fila geral para técnicos, acompanhamento dos próprios chamados e pesquisa por palavras-chave.
+- Botão **Assumir** na lista e na janela de detalhes.
+- Transferência de chamados para outros técnicos aprovados, preservando as mensagens.
+- Filtros **Em aberto**, **Resolvidos** e **Todos** nos atendimentos do técnico.
+- Histórico de mensagens com identificação do autor e data/hora.
+- Gerenciamento de clientes e técnicos pelo primeiro técnico (`TEC-01`), com proteção da própria conta e dos atendimentos em aberto.
+- Fila temporária de operações offline para novos chamados e mensagens. As demais operações exigem conexão com a internet.
 
-1. Instale Node.js 22 com npm e extraia o projeto em uma pasta gravável.
-2. Abra a pasta que contém `package.json` no VS Code. Sem `.env` e sem variáveis de banco, o projeto usa memória para demonstração.
-3. Rode no terminal:
+## 2. Requisitos para executar
 
-```bash
+- **Node.js 22** e npm instalados ([nodejs.org](https://nodejs.org/)). O projeto possui o arquivo `.node-version` com essa versão.
+- Windows 10/11, Linux ou macOS; no Windows, os exemplos abaixo utilizam PowerShell no terminal do VS Code.
+- Navegador atualizado, como Edge ou Chrome.
+- Acesso à internet para instalar as dependências. Para usar Supabase ou Render, também é necessária uma conta nesses serviços.
+
+Abra sempre o terminal **na pasta em que estão `package.json`, `database.sql` e `render.yaml`**. Para conferir as versões instaladas:
+
+```powershell
+node -v
+npm -v
+```
+
+Se o PowerShell bloquear `npm`, utilize `npm.cmd` nos comandos (`npm.cmd ci --include=dev`, por exemplo).
+
+## 3. Executar localmente, sem Supabase (modo demonstração)
+
+Este é o modo mais fácil para testar o projeto no computador. Os dados ficam **em memória** e desaparecem ao reiniciar a API.
+
+1. Baixe ou clone o repositório e abra sua pasta no VS Code.
+2. Certifique-se de que não existe um arquivo `.env` preenchido com dados do Supabase e de que não há `SUPABASE_URL` ou `SUPABASE_SERVICE_ROLE_KEY` definidas no terminal.
+3. Execute:
+
+```powershell
 npm ci --include=dev
 npm run dev
 ```
 
-Acesse http://localhost:5173. API: http://localhost:3000/api/saude. No Windows, `iniciar-local.bat` executa a instalação e inicia o projeto. Em PowerShell com scripts bloqueados, use `npm.cmd` em vez de `npm`.
+4. Abra **http://localhost:5173** no navegador. A API é iniciada na porta 3000; confira **http://localhost:3000/api/saude**.
 
-| Conta local | E-mail | Senha de demonstração |
+O terminal do servidor deverá informar `Persistência: memória (não persistente)`.
+
+| Perfil de demonstração | E-mail | Senha |
 | --- | --- | --- |
-| Cliente 1 | cliente@helpflow.local | 123456 |
-| Cliente 2 | cliente2@helpflow.local | 123456 |
-| Técnico inicial | tecnico@helpflow.local | 123456 |
-| Técnico 2 | tecnico2@helpflow.local | 123456 |
+| Cliente | `cliente@helpflow.local` | `123456` |
+| Outro cliente | `cliente2@helpflow.local` | `123456` |
+| Técnico inicial | `tecnico@helpflow.local` | `123456` |
+| Outro técnico | `tecnico2@helpflow.local` | `123456` |
 
-Essas contas existem somente em modo memória, sem banco. O servidor perde os dados de memória ao reiniciar. Não use essas credenciais na hospedagem; crie contas fictícias próprias para avaliar o sistema online.
+As contas acima **não são utilizadas no Supabase nem no Render**. Não use essas senhas em contas reais.
 
-## Verificar o projeto
+No Windows, o arquivo `INICIAR-LOCAL.bat` também instala as dependências e executa `npm run dev`.
 
-```bash
-npm run check       # servidor e módulos API/fila do navegador
-npm test            # testes de unidade e integração HTTP em memória
-npm run build       # compila servidor + interface
-npm run test:build  # verifica página inicial e rota de saúde após build
-npm start           # inicia a versão compilada: http://localhost:3000
-npm run medir:algoritmos # comparação da ordenação em memória
+Para parar o projeto, pressione **Ctrl + C** no terminal. Se abrir duas instâncias por engano, feche a anterior antes de iniciar outra, pois ambas usam a porta 3000.
+
+### Executar a versão compilada localmente
+
+Se quiser simular a execução que será usada na hospedagem:
+
+```powershell
+npm run build
+npm start
 ```
 
-Feche o `npm run dev` antes de rodar `npm start` (mesma porta 3000). `npm run check` não verifica estaticamente todos os componentes JSX; eles são compilados pelo Vite. Os testes usam memória mesmo que variáveis Supabase estejam definidas. Resultado local de 18/11/2026: 40/40 testes, 7 arquivos, 2,14 s; checagens e build aprovados. Registros em `docs/evidencias/`.
+Abra **http://localhost:3000**. Neste caso, o Express entrega a interface compilada e a API no mesmo endereço. **Pare `npm run dev` antes de usar `npm start`.**
 
-## Evidência de desempenho CA-03 (22/11/2026)
+## 4. Executar localmente com Supabase (banco persistente)
 
-Foi utilizada uma instância local do HelpFlow conectada a um projeto Supabase **separado para testes**, com 500 chamados e 50 mensagens. O script HTTP verificou os volumes e registrou 934,23 ms para a fila e 563,62 ms para o histórico. As gravações do Edge indicaram aproximadamente 790 ms até o evento de pintura da fila e 1.090 ms do clique até a pintura do histórico. Esses números são de execuções distintas, não devem ser somados e **não comprovam o desempenho no Render**. A primeira verificação local ficou abaixo das metas; a repetição e validação online continuam pendentes. Consulte `docs/evidencias/ca03_resultados.md`.
+Use este modo para manter usuários, chamados e mensagens no PostgreSQL do Supabase. Para testes de carga, utilize um **projeto Supabase separado** do banco da apresentação.
 
-## Banco Supabase e Render
+### 4.1. Preparar o banco
 
-O sistema usa PostgreSQL através do Supabase; a chave privilegiada fica apenas no servidor Express. Para instalar em banco novo, execute `database.sql` no SQL Editor. Para o banco HelpFlow existente, faça backup, execute `database.sql` (estrutura aditiva) e depois `scripts/verificar_banco.sql`. O arquivo completo inclui as migrações de cadastro e gerenciamento; as versões separadas permanecem em `scripts/` para referência. Não execute scripts de carga/limpeza em produção.
+1. Entre no [painel do Supabase](https://supabase.com/dashboard) e crie um projeto, se ainda não tiver um.
+2. No projeto escolhido, abra **SQL Editor → New query**.
+3. Copie o conteúdo de `database.sql`, execute e confira se as tabelas `usuarios`, `chamados` e `mensagens` foram criadas.
+4. Para conferir as funções e permissões depois da inicialização, execute `scripts/verificar_banco.sql`.
 
-No Render, mantenha o Web Service existente conectado à branch `main` do GitHub. Configuração indicada:
+**Cuidado:** antes de aplicar atualizações a um banco que já contém dados, faça um backup. **Não execute `scripts/carga_teste.sql` ou `scripts/remover_carga_teste.sql` no banco de produção.**
 
-| Configuração | Valor |
+### 4.2. Configurar as variáveis locais
+
+Na raiz do projeto, crie o arquivo `.env` a partir do modelo:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Abra `.env` no VS Code e preencha os valores correspondentes ao **mesmo projeto Supabase**. Exemplo de estrutura (não copie os valores ilustrativos como credenciais):
+
+```dotenv
+PORT=3000
+NODE_ENV=development
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=SUA_CHAVE_SECRETA
+TECNICO_INICIAL_EMAIL=tecnico-teste@exemplo.com
+TECNICO_INICIAL_SENHA=SUA_SENHA_FORTE_COM_PELO_MENOS_12_CARACTERES
+TECNICO_INICIAL_NOME=Tecnico de Testes
+```
+
+- A **Project URL** está nas configurações da API do Supabase. Utilize somente a URL base `https://...supabase.co`, sem `/rest/v1`.
+- A chave usada pelo backend deve ser **secreta/privilegiada**, obtida em **Project Settings → API Keys**. O nome da variável no HelpFlow continua sendo `SUPABASE_SERVICE_ROLE_KEY` mesmo que a chave utilizada seja a nova chave secreta do Supabase.
+- Nunca coloque essa chave em código do navegador, prints, mensagens públicas ou arquivos versionados.
+- A senha do primeiro técnico deve ter **pelo menos 12 caracteres**. O primeiro técnico recebe o identificador protegido `TEC-01`.
+- Se `TEC-01` já existir no banco, **reiniciar o servidor ou mudar a variável não redefine a senha antiga**.
+
+O arquivo `.env` é ignorado pelo Git através do `.gitignore`. Confira essa proteção antes de fazer um commit.
+
+### 4.3. Iniciar e testar
+
+No terminal do VS Code, execute:
+
+```powershell
+npm ci --include=dev
+npm run dev
+```
+
+Abra **http://localhost:5173**. O terminal deverá exibir `Persistência: Supabase`. O primeiro técnico será cadastrado na primeira inicialização quando as variáveis estiverem corretas e a conta `TEC-01` ainda não existir.
+
+Entre com o e-mail e a senha configurados para o primeiro técnico. Cadastre um cliente pela interface, abra um chamado e confira se ele aparece na fila do técnico. Reinicie o servidor e verifique se os dados continuam salvos.
+
+**Importante para `npm start`:** o comando `npm run dev` carrega `.env` pelo script `dev:api`, mas **`npm start` não carrega esse arquivo automaticamente**. Para iniciar a versão compilada com o `.env` no Node.js 22, use:
+
+```powershell
+npm run build
+node --env-file=.env dist/server/servicos/server.js
+```
+
+Abra **http://localhost:3000**. Se preferir usar `npm start`, defina antes as variáveis de ambiente no próprio terminal. Não rode os dois servidores ao mesmo tempo.
+
+### 4.4. Testar o CA-03 sem afetar a produção
+
+Somente em um **banco de testes separado**, execute `scripts/carga_teste.sql`. O script cria 500 chamados fictícios e 50 mensagens no chamado `PERF-0001`.
+
+Em um segundo terminal PowerShell, configure as credenciais de um técnico aprovado **nesse banco de testes**:
+
+```powershell
+$env:HELPFLOW_TEST_EMAIL = "tecnico-teste@exemplo.com"
+$senha = Read-Host "Senha do tecnico de testes" -AsSecureString
+$env:HELPFLOW_TEST_PASSWORD = [System.Net.NetworkCredential]::new("", $senha).Password
+node scripts/medir_desempenho.mjs http://localhost:3000
+```
+
+Se o servidor foi iniciado com `npm run dev`, a API também estará em `http://localhost:3000`. O script mede o tempo HTTP e a leitura do JSON, **não o tempo de exibição dos dados no navegador**. Guarde as medições e as gravações de tela em `docs/evidencias/`. Ao terminar, limpe as variáveis temporárias do segundo terminal e use `scripts/remover_carga_teste.sql` **apenas no banco de testes**, caso deseje remover os registros.
+
+## 5. Publicar na internet pelo Render
+
+O Render executa a API Express e entrega a interface React compilada no mesmo endereço. O banco fica no Supabase; o Render **não substitui o Supabase**.
+
+### 5.1. Preparar o GitHub e o Supabase
+
+1. Atualize o repositório [Goldcrowb/TCC_HelpFlow](https://github.com/Goldcrowb/TCC_HelpFlow) com os arquivos do projeto e faça **Push origin**.
+2. Confirme que o repositório tem `render.yaml`, `package.json`, `package-lock.json` e `.node-version` na raiz.
+3. No Supabase escolhido para a hospedagem, execute `database.sql` se for um banco novo. Em banco existente, faça backup antes de qualquer atualização e confira a estrutura com `scripts/verificar_banco.sql`.
+4. Nunca envie o arquivo `.env` ou chaves secretas para o GitHub.
+
+### 5.2. Criar o serviço
+
+Acesse [dashboard.render.com](https://dashboard.render.com/), conecte seu GitHub e siga **New → Blueprint** para criar um serviço usando `render.yaml`. Se o serviço `helpflow-tcc` **já existe**, apenas atualize o repositório e as variáveis do serviço existente: **não é necessário criar outro**.
+
+O arquivo `render.yaml` define:
+
+| Campo | Valor no projeto |
 | --- | --- |
-| Node | 22 (`.node-version`) |
-| Build | `npm ci --include=dev && npm run build` |
-| Start | `npm start` |
-| Health check | `/api/saude` |
-| Plano | Free (sujeito aos limites do serviço) |
+| Serviço | `helpflow-tcc` (Web Service) |
+| Ambiente | Node.js 22, conforme `.node-version` |
+| Plano | Free |
+| Build Command | `npm ci --include=dev && npm run build` |
+| Start Command | `npm start` |
+| Health Check Path | `/api/saude` |
 
-Variáveis em Environment (não enviar segredos ao GitHub):
+### 5.3. Variáveis de ambiente no Render
 
-| Nome | Valor |
+No serviço do Render, abra **Environment → Edit**. Preencha as variáveis abaixo; os nomes devem ser exatamente os definidos no projeto:
+
+| Variável | O que informar |
 | --- | --- |
-| `NODE_ENV` | production |
-| `SUPABASE_URL` | URL base do projeto, sem `/rest/v1` |
-| `SUPABASE_SERVICE_ROLE_KEY` | chave privilegiada do mesmo projeto, mantida no backend |
-| `SESSION_SECRET` | segredo aleatório de pelo menos 32 caracteres |
-| `TECNICO_INICIAL_EMAIL` | e-mail da conta técnica inicial |
-| `TECNICO_INICIAL_SENHA` | senha exclusiva de pelo menos 12 caracteres |
-| `TECNICO_INICIAL_NOME` | nome de exibição (opcional) |
+| `NODE_ENV` | `production` |
+| `SUPABASE_URL` | URL base do projeto Supabase utilizado pelo site |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave privada do **mesmo** projeto Supabase |
+| `SESSION_SECRET` | Segredo aleatório com pelo menos 32 caracteres; o Blueprint pode gerá-lo |
+| `TECNICO_INICIAL_EMAIL` | E-mail do primeiro técnico autorizado |
+| `TECNICO_INICIAL_SENHA` | Senha forte, com no mínimo 12 caracteres |
+| `TECNICO_INICIAL_NOME` | Nome de exibição, opcional |
 
-O técnico inicial recebe o ID reservado `TEC-01`. Se a conta já existe, o servidor não redefine a senha. Alterar a variável de senha não é recuperação de senha. Não modifique o ID ou o e-mail do administrador sem planejamento. Para teste local com Supabase, copie `.env.example` para `.env`, preencha os valores e use `npm run dev`; esse arquivo é ignorado pelo Git. Em produção, use Environment do Render.
+O arquivo `render.yaml` marca as chaves privadas com `sync: false` para serem preenchidas no painel, sem armazenar os valores no repositório. Se `SESSION_SECRET` já foi gerada automaticamente, mantenha-a. Não ative `DEMO_MEMORY_MODE` na apresentação online.
 
-Após o commit e push, acompanhe o deploy, confirme `/api/saude` e teste com contas fictícias de cliente e técnico. Se estiver suspenso, retome o serviço. Serviços gratuitos podem hibernar ou pausar; teste no dia anterior e novamente antes da defesa. O link público real está no painel do Render.
+### 5.4. Fazer a implantação e conferir
 
-Se excluir usuário retornar erro, rode `scripts/verificar_banco.sql` e confira a função `excluir_usuario_helpflow`, a permissão de execução do `service_role`, a conta inicial e o trigger. Se continuar, consulte os logs do Render. A exclusão em Supabase online ainda precisa ser confirmada após a correção; não delete tabelas nem desative RLS.
+1. Clique em **Save, deploy** ou faça **Manual Deploy → Deploy latest commit**, conforme o serviço.
+2. Acompanhe **Logs**. A implantação precisa concluir o build e iniciar o servidor sem erros.
+3. Verifique se o serviço está **Live** e abra a URL pública indicada pelo Render (o endereço real aparece no painel).
+4. Confira a rota `https://SEU-SERVICO.onrender.com/api/saude`.
+5. Faça login, crie um cliente fictício, abra um chamado e verifique o atendimento com o técnico.
+6. Recarregue a página para confirmar a persistência no Supabase.
 
-## Estrutura do repositório
+No plano gratuito, o serviço pode ficar inativo após um período sem acessos, e o projeto Supabase gratuito também pode ser pausado por inatividade. Reative e teste os dois antes da defesa. Se o serviço tiver sido suspenso manualmente, use a opção de retomada do Render.
+
+## 6. Problemas comuns
+
+| Problema | O que conferir |
+| --- | --- |
+| `npm` não reconhecido ou bloqueado | Instale Node.js 22, reabra o terminal; no PowerShell tente `npm.cmd` |
+| Porta 3000 em uso | Pare outra instância do HelpFlow com `Ctrl + C` |
+| `Persistência: memória` quando esperava Supabase | Confira `.env` ou as variáveis no **mesmo terminal** da API; reinicie o servidor |
+| `401 — E-mail ou senha inválidos` | Verifique em qual banco o servidor está conectado e se a conta existe nele; contas locais não são contas do Supabase |
+| Primeiro técnico não aparece | Configure `TECNICO_INICIAL_EMAIL` e `TECNICO_INICIAL_SENHA` antes da primeira inicialização e consulte `TEC-01` no banco |
+| `PERF-0001` não encontrado | A carga de 500/50 não foi executada no banco de testes conectado à API |
+| Build do Render falhou | Confira `.node-version` e o comando `npm ci --include=dev && npm run build` |
+| Site abre, mas os dados falham | Confira URL e chave do mesmo projeto Supabase, tabelas, permissões e disponibilidade do banco |
+| Não é possível excluir usuário | Execute `scripts/verificar_banco.sql` e confira a função `excluir_usuario_helpflow`; consulte os logs do Render |
+| Alterou a senha do primeiro técnico no Render, mas o login não mudou | A senha da conta existente não é redefinida por essa variável |
+
+Não apague tabelas nem desative a segurança RLS para corrigir um erro de configuração. Nunca publique o conteúdo do `.env`.
+
+## 7. Verificar o código
+
+```powershell
+npm run check
+npm test
+npm run build
+npm run test:build
+```
+
+Os comandos acima verificam tipos, executam testes automatizados, compilam o projeto e conferem o build. `npm run test:build` precisa que a pasta `dist` tenha sido criada pelo build. O comando `npm run check` não inspeciona todos os componentes JSX com as mesmas regras de tipos; o build do Vite complementa a verificação.
+
+A última execução registrada no material entregue (18/11/2026) apresentou **40/40 testes aprovados**. Consulte os registros em `docs/evidencias/`; essa informação não substitui a execução dos comandos no computador do avaliador.
+
+### Evidência de desempenho CA-03
+
+No teste local de 22/11/2026, com banco Supabase separado, foram utilizados **500 chamados** e **50 mensagens**. O script HTTP registrou **934,23 ms** para a fila e **563,62 ms** para o histórico. Duas gravações do Edge indicaram aproximadamente **790 ms** até a pintura da fila e **1.090 ms** do clique até a pintura do histórico. São medições de execuções diferentes e não devem ser somadas. A primeira execução ficou abaixo dos limites locais de 2 s e 3 s, respectivamente; ainda faltam repetições e confirmação no Render. Veja [o registro do CA-03](docs/evidencias/ca03_resultados.md).
+
+## 8. Como o projeto está organizado
 
 ```text
 src/
   apresentacao/   telas React, chamadas à API e fila offline
-  servicos/       rotas HTTP e composição do servidor
-  aplicacao/      casos de uso e controle de permissões
-  dominio/        entidades, regras e interfaces dos repositórios
+  servicos/       rotas e inicialização do servidor Express
+  aplicacao/      serviços e casos de uso
+  dominio/        entidades, regras e interfaces
   persistencia/   repositórios em memória e Supabase
-public/          arquivos estáticos e service worker
-scripts/         migrações e verificações reproduzíveis
-docs/            dossiê D1–D9, manual, API, evidências e diagramas
+public/          recursos estáticos
+scripts/         scripts SQL, medições e verificações
+docs/            documentação D1–D9, diagramas e evidências
 apresentacao/    slides e roteiro da defesa
-referencias/     termo de referência original e materiais do professor
+referencias/     materiais originais do projeto e da disciplina
 ```
 
-A apresentação e os serviços chamam o domínio através dos casos de uso. A persistência implementa as interfaces do domínio. O domínio não depende de React, Express ou Supabase. O padrão Repository permite testar o sistema sem banco. Os princípios SOLID aparecem principalmente na responsabilidade única e inversão de dependência; não se afirma adesão integral a todos eles.
+O domínio foi desenvolvido com modelagem orientada a objetos. As regras de negócio ficam separadas do armazenamento por interfaces de repositório (padrão Repository). A organização aplica princípios SOLID principalmente na separação de responsabilidades e na inversão de dependência, sem afirmar adesão integral a todos eles.
 
-## Documentação e entrega
+## 9. Documentação e entrega
 
-- [Dossiê único D1–D9 (PDF)](docs/HelpFlow_EntregaFinal_v2.2.pdf) — índice e páginas numeradas.
-- [Versão editável (Word)](docs/HelpFlow_EntregaFinal_v2.2.docx).
-- [Manual rápido](docs/manual.md), [API](docs/api.md), [pendências e evidências](docs/pendencias.md).
+- [Dossiê final D1–D9 em PDF](docs/HelpFlow_EntregaFinal_v2.2.pdf) e [versão Word](docs/HelpFlow_EntregaFinal_v2.2.docx).
+- [Manual de uso](docs/manual.md), [documentação da API](docs/api.md) e [pendências](docs/pendencias.md).
 - [Apresentação da defesa](apresentacao/HelpFlow_Defesa.pptx) e [roteiro](apresentacao/roteiro.md).
-- Código original: https://github.com/Goldcrowb/TCC_HelpFlow. Confirmar acesso do professor e atualizar este repositório com a versão final.
+- [Registros de testes e medições](docs/evidencias/).
+- [Repositório no GitHub](https://github.com/Goldcrowb/TCC_HelpFlow).
 
-O termo inicial é preservado em `referencias/`. Dados de entrevista, teste por terceiro e validações na nuvem não foram inventados. A comparação local de algoritmos, isoladamente, não prova o CA-03. Em 22/11/2026 foram obtidas medições adicionais em Supabase de teste: 500 chamados (HTTP + JSON 934,23 ms; pintura estimada ~790 ms) e 50 mensagens (HTTP + JSON 563,62 ms; pintura estimada ~1.090 ms), ambas abaixo dos limites nas execuções locais. Os rastros e ressalvas estão em [evidência CA-03](docs/evidencias/ca03_resultados.md). Ainda faltam repetições e validação no ambiente online. O CA-06 exige instalação por outra pessoa. O alerta anterior de oito vulnerabilidades do npm ainda exige diagnóstico atualizado e correção quando aplicável; `npm audit` não consultou o registro nesta revisão por falha de rede. Evite `npm audit fix --force` sem avaliar mudanças de versão.
+A documentação distingue o que foi implementado do que ainda precisa de evidência. O CA-06 (instalação por outra pessoa), parte da validação online e a auditoria atualizada de vulnerabilidades ainda precisam ser concluídos ou registrados. Não inclua senhas, chaves, `node_modules`, `dist` ou `.env` no commit.
 
-Não envie `node_modules/`, `dist/`, `.env`, dados reais, senhas ou chaves. O pacote entregue contém código-fonte instalável por npm, não um executável autônomo. Não foram alteradas contas nem dados do Supabase nesta revisão.
+**Observação:** o HelpFlow é uma aplicação web executada com Node.js; o ZIP do projeto e o repositório contêm código-fonte e instruções de instalação, não um executável autônomo.
