@@ -1,1 +1,0 @@
-Tracos de desempenho do Edge e capturas de evidencias CA-03 (22/11/2026). Antes de tornar o repositorio publico, revise os tracos para nao divulgar informacoes privadas do navegador. Descricao e ressalvas em ../ca03_resultados.md.
